@@ -23,7 +23,7 @@ export const brandsService = {
     },
 
     async connectFacebook(brandId: number, accessToken: string, accountId: string): Promise<Brand> {
-        const response = await api.post<Brand>("/facebook/connect", {
+        const response = await api.post<Brand>("/facebook/accounts", {
             brandId,
             accessToken,
             accountId

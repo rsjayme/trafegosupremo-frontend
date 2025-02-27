@@ -10,25 +10,26 @@ import { toast } from "sonner";
 import { Brand } from "@/types/brand";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { FacebookConnectButton } from "@/components/brands/FacebookConnect";
 
 export default function Marcas() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(true);
     const [brands, setBrands] = useState<Brand[]>([]);
 
-    useEffect(() => {
-        async function loadBrands() {
-            try {
-                const data = await brandsService.listBrands();
-                setBrands(data || []);
-            } catch (error) {
-                toast.error(error instanceof Error ? error.message : 'Erro ao carregar marcas');
-                setBrands([]);
-            } finally {
-                setIsLoading(false);
-            }
+    const loadBrands = async () => {
+        try {
+            const data = await brandsService.listBrands();
+            setBrands(data || []);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Erro ao carregar marcas');
+            setBrands([]);
+        } finally {
+            setIsLoading(false);
         }
+    };
 
+    useEffect(() => {
         loadBrands();
     }, []);
 
@@ -127,11 +128,17 @@ export default function Marcas() {
                                                     </span>
                                                 </div>
                                             ) : (
-                                                <div className="flex items-center gap-2 text-sm">
-                                                    <div className="w-2 h-2 rounded-full bg-gray-300" />
-                                                    <span className="text-gray-500">
-                                                        Facebook não conectado
-                                                    </span>
+                                                <div className="flex items-center justify-between w-full">
+                                                    <div className="flex items-center gap-2 text-sm">
+                                                        <div className="w-2 h-2 rounded-full bg-gray-300" />
+                                                        <span className="text-gray-500">
+                                                            Facebook não conectado
+                                                        </span>
+                                                    </div>
+                                                    <FacebookConnectButton
+                                                        brandId={brand.id}
+                                                        onConnect={loadBrands}
+                                                    />
                                                 </div>
                                             )}
                                         </div>

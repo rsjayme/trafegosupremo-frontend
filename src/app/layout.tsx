@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { Toaster } from "sonner";
 import { LoadingContainer } from "@/components/LoadingOverlay";
+import { FacebookSDKProvider } from "@/components/FacebookSDKProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -25,11 +26,13 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body className={inter.className}>
         <Providers>
-          <LoadingContainer isLoading={false}>
-            <main className="min-h-screen bg-gray-50">
-              {children}
-            </main>
-          </LoadingContainer>
+          <FacebookSDKProvider>
+            <LoadingContainer isLoading={false}>
+              <main className="min-h-screen bg-gray-50">
+                {children}
+              </main>
+            </LoadingContainer>
+          </FacebookSDKProvider>
           <Toaster
             position="top-right"
             expand={true}

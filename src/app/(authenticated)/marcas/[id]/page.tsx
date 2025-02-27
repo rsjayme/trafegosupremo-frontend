@@ -1,42 +1,46 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CaretLeft, PlugsConnected, Power } from "@phosphor-icons/react";
 import { brandsService } from "@/services/brands";
 import { toast } from "sonner";
-import { FacebookConnect } from "@/components/brands/FacebookConnect";
+import { FacebookConnectButton } from "@/components/brands/FacebookConnect";
 import { Brand } from "@/types/brand";
 
-export default function DetalheMarca({ params }: { params: { id: string } }) {
+interface DetalheParams {
+    id: string;
+}
+
+export default function DetalheMarca({ params }: { params: Promise<DetalheParams> }) {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(true);
     const [brand, setBrand] = useState<Brand | null>(null);
+    const resolvedParams = use(params);
+
+    const loadBrand = async () => {
+        try {
+            const data = await brandsService.getBrand(Number(resolvedParams.id));
+            setBrand(data);
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Erro ao carregar marca');
+            router.push('/marcas');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     useEffect(() => {
-        async function loadBrand() {
-            try {
-                const data = await brandsService.getBrand(Number(params.id));
-                setBrand(data);
-            } catch (error) {
-                toast.error(error instanceof Error ? error.message : 'Erro ao carregar marca');
-                router.push('/marcas');
-            } finally {
-                setIsLoading(false);
-            }
-        }
-
         loadBrand();
-    }, [params.id, router]);
+    }, [resolvedParams.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const handleFacebookConnect = async (data: { accessToken: string; accountId: string }) => {
+    const handleConnect = async () => {
         if (!brand) return;
-
         try {
-            const updatedBrand = await brandsService.connectFacebook(brand.id, data.accessToken, data.accountId);
-            setBrand(updatedBrand);
+            // A lógica de conexão foi movida para o componente FacebookConnectButton
+            await loadBrand(); // Recarrega os dados da marca após a conexão
             toast.success('Conta do Facebook conectada com sucesso!');
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Erro ao conectar conta do Facebook');
@@ -111,7 +115,10 @@ export default function DetalheMarca({ params }: { params: { id: string } }) {
                         </div>
                     </Card>
                 ) : (
-                    <FacebookConnect brandId={brand.id} onConnect={handleFacebookConnect} />
+                    <FacebookConnectButton
+                        brandId={brand.id}
+                        onConnect={handleConnect}
+                    />
                 )}
             </div>
         </div>
