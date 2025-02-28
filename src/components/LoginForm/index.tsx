@@ -40,9 +40,6 @@ export function LoginForm() {
     const onSubmit = async (data: LoginFormData) => {
         try {
             await login(data);
-            // Agora apenas mostramos o toast de sucesso
-            // O redirecionamento será feito pelo AuthRedirect
-            toast.success('Login realizado com sucesso!');
         } catch (error) {
             if (error instanceof Error) {
                 if (error.message.includes('credenciais')) {

@@ -11,6 +11,7 @@ interface BrandContextType {
     isLoading: boolean;
     error: string | null;
     refetchBrands: () => Promise<void>;
+    isConfigured: (brand: Brand) => boolean;
 }
 
 const BrandContext = createContext<BrandContextType | undefined>(undefined);
@@ -26,7 +27,12 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
         try {
             setIsLoading(true);
             setError(null);
+            // Carrega apenas marcas que têm conexão com o Facebook
             const data = await brandsService.listConnectedBrands();
+            if (data.length > 0) {
+                // Seleciona automaticamente a primeira marca conectada
+                setSelectedBrand(data[0]);
+            }
             setBrands(data);
         } catch (err) {
             setError("Erro ao carregar marcas");
@@ -45,6 +51,12 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
         return null;
     }
 
+    const isConfigured = (brand: Brand): boolean => {
+        return !!(brand.facebookAccount?.status === 'active' &&
+            brand.facebookAccount?.accountId &&
+            brand.facebookAdAccounts?.length > 0);
+    };
+
     return (
         <BrandContext.Provider
             value={{
@@ -53,7 +65,8 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
                 brands,
                 isLoading,
                 error,
-                refetchBrands: fetchBrands
+                refetchBrands: fetchBrands,
+                isConfigured
             }}
         >
             {children}

@@ -2,10 +2,10 @@
 
 import { Card } from "@/components/ui/card";
 import { ArrowDown, ArrowUp, DollarSign, Target, Eye, MousePointer, RefreshCcw, AlertCircle } from "lucide-react";
-import { useFacebookData } from "@/hooks/useFacebookData";
 import { subDays } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useDashboardData } from "@/hooks/useDashboardData";
 
 interface MetricCardProps {
     title: string;
@@ -45,8 +45,7 @@ function MetricCard({ title, value, comparison, icon, isLoading }: MetricCardPro
                     <p className="text-sm text-muted-foreground">{title}</p>
                     <h3 className="text-2xl font-bold">{value}</h3>
                     {comparison !== undefined && (
-                        <p className={`text-sm flex items-center gap-1 ${isPositive ? "text-green-600" : "text-red-600"
-                            }`}>
+                        <p className={`text-sm flex items-center gap-1 ${isPositive ? "text-green-600" : "text-red-600"}`}>
                             {isPositive ? (
                                 <ArrowUp className="h-4 w-4" />
                             ) : (
@@ -66,46 +65,45 @@ interface DashboardMetricsProps {
         from: Date | undefined;
         to: Date | undefined;
     };
-    accountId: string;
+    brandId: number;
 }
 
-export function DashboardMetrics({ dateRange, accountId }: DashboardMetricsProps) {
+export function DashboardMetrics({ dateRange, brandId }: DashboardMetricsProps) {
     // Calcula o período anterior para comparação
     const previousDateRange = dateRange.from && dateRange.to ? {
         from: subDays(dateRange.from, dateRange.to.getTime() - dateRange.from.getTime()),
         to: subDays(dateRange.to, dateRange.to.getTime() - dateRange.from.getTime())
     } : undefined;
 
-    const currentRange = dateRange.from && dateRange.to ? {
-        since: dateRange.from.toISOString().split('T')[0],
-        until: dateRange.to.toISOString().split('T')[0]
-    } : undefined;
+    const currentFilters = {
+        brandId,
+        since: dateRange.from?.toISOString().split('T')[0] || '',
+        until: dateRange.to?.toISOString().split('T')[0] || ''
+    };
 
-    const previousRange = previousDateRange?.from && previousDateRange?.to ? {
+    const previousFilters = previousDateRange?.from && previousDateRange?.to ? {
+        brandId,
         since: previousDateRange.from.toISOString().split('T')[0],
         until: previousDateRange.to.toISOString().split('T')[0]
     } : undefined;
 
     const {
-        totals: currentTotals,
+        data: currentData,
         isLoading,
         error,
-        refreshData
-    } = useFacebookData({
-        autoLoad: true,
-        accountId,
-        dateRange: currentRange
+        refetch
+    } = useDashboardData(currentFilters, {
+        enabled: !!dateRange.from && !!dateRange.to
     });
 
-    const { totals: previousTotals } = useFacebookData({
-        autoLoad: true,
-        accountId,
-        dateRange: previousRange
-    });
+    const { data: previousData } = useDashboardData(
+        previousFilters || { brandId, since: '', until: '' },
+        { enabled: !!previousFilters }
+    );
 
     const handleRefresh = async () => {
         try {
-            await refreshData();
+            await refetch();
             toast.success('Métricas atualizadas com sucesso!');
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Erro ao atualizar métricas');
@@ -135,7 +133,7 @@ export function DashboardMetrics({ dateRange, accountId }: DashboardMetricsProps
             <Card className="p-6 flex flex-col items-center justify-center text-center space-y-4">
                 <AlertCircle className="h-12 w-12 text-red-500" />
                 <h3 className="text-lg font-semibold">Erro ao carregar métricas</h3>
-                <p className="text-sm text-gray-500">{error}</p>
+                <p className="text-sm text-gray-500">{error instanceof Error ? error.message : 'Erro desconhecido'}</p>
                 <Button onClick={handleRefresh} variant="outline">
                     <RefreshCcw className="mr-2 h-4 w-4" />
                     Tentar novamente
@@ -144,29 +142,38 @@ export function DashboardMetrics({ dateRange, accountId }: DashboardMetricsProps
         );
     }
 
+    const currentMetrics = currentData?.current?.overview || {
+        spend: 0,
+        reach: 0,
+        impressions: 0,
+        clicks: 0
+    };
+
+    const previousMetrics = previousData?.current?.overview;
+
     const metrics = [
         {
             title: "Gasto Total",
-            value: formatCurrency(currentTotals?.spend),
-            comparison: calculateComparison(currentTotals?.spend, previousTotals?.spend),
+            value: formatCurrency(currentMetrics.spend),
+            comparison: calculateComparison(currentMetrics.spend, previousMetrics?.spend),
             icon: <DollarSign className="h-5 w-5 text-primary" />,
         },
         {
             title: "Alcance",
-            value: formatNumber(currentTotals?.reach),
-            comparison: calculateComparison(currentTotals?.reach, previousTotals?.reach),
+            value: formatNumber(currentMetrics.reach),
+            comparison: calculateComparison(currentMetrics.reach, previousMetrics?.reach),
             icon: <Target className="h-5 w-5 text-primary" />,
         },
         {
             title: "Impressões",
-            value: formatNumber(currentTotals?.impressions),
-            comparison: calculateComparison(currentTotals?.impressions, previousTotals?.impressions),
+            value: formatNumber(currentMetrics.impressions),
+            comparison: calculateComparison(currentMetrics.impressions, previousMetrics?.impressions),
             icon: <Eye className="h-5 w-5 text-primary" />,
         },
         {
             title: "Cliques",
-            value: formatNumber(currentTotals?.clicks),
-            comparison: calculateComparison(currentTotals?.clicks, previousTotals?.clicks),
+            value: formatNumber(currentMetrics.clicks),
+            comparison: calculateComparison(currentMetrics.clicks, previousMetrics?.clicks),
             icon: <MousePointer className="h-5 w-5 text-primary" />,
         },
     ];

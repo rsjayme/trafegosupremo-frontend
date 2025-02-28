@@ -3,12 +3,21 @@ import { Brand } from "@/types/brand";
 
 export const brandsService = {
     async listBrands(): Promise<Brand[]> {
-        const response = await api.get<Brand[]>("/brands");
+        const response = await api.get<Brand[]>("/brands", {
+            params: {
+                include: 'facebookAccount,facebookAdAccounts'
+            }
+        });
         return response.data;
     },
 
     async listConnectedBrands(): Promise<Brand[]> {
-        const response = await api.get<Brand[]>("/brands?hasConnection=true");
+        const response = await api.get<Brand[]>("/brands", {
+            params: {
+                hasConnection: true,
+                include: 'facebookAccount,facebookAdAccounts'
+            }
+        });
         return response.data;
     },
 
@@ -18,7 +27,11 @@ export const brandsService = {
     },
 
     async getBrand(id: number): Promise<Brand> {
-        const response = await api.get<Brand>(`/brands/${id}`);
+        const response = await api.get<Brand>(`/brands/${id}`, {
+            params: {
+                include: 'facebookAccount,facebookAdAccounts'
+            }
+        });
         return response.data;
     },
 

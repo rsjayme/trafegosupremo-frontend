@@ -15,6 +15,12 @@ import {
     type ChartData,
 } from "chart.js";
 import { useBrand } from "@/contexts/BrandContext";
+import { useDashboardData } from "@/hooks/useDashboardData";
+import { useDashboardFilters } from "@/hooks/useDashboardFilters";
+import { DashboardFilters } from "@/components/DashboardFilters";
+import type { DailyInsights } from "@/types/dashboard";
+import { useDashboardComparison } from "@/hooks/useDashboardComparison";
+import { DashboardComparison } from "@/components/DashboardComparison";
 
 ChartJS.register(
     CategoryScale,
@@ -27,8 +33,42 @@ ChartJS.register(
 );
 
 export function DashboardCharts() {
-    const { selectedBrand, brands, isLoading } = useBrand();
+    const { selectedBrand, brands, isLoading: brandsLoading } = useBrand();
+    const brandId = selectedBrand?.id || 0;
 
+    // Verificação do estado da marca
+    const isFacebookConnected = selectedBrand?.facebookAccount?.status === 'active';
+    const hasAdAccount = (selectedBrand?.facebookAdAccounts || []).length > 0;
+    const isConfigured = !!(selectedBrand && isFacebookConnected && hasAdAccount);
+
+    // Hooks para gerenciamento de dados
+    const {
+        filters,
+        updateDateRange,
+        toggleComparison,
+        setQuickDateRange,
+        setPreviousPeriod,
+        setNextPeriod,
+        canGoToNextPeriod
+    } = useDashboardFilters(brandId);
+
+    const { data: dashboardData, isLoading: dataLoading } = useDashboardData(filters, {
+        enabled: isConfigured
+    });
+
+    const comparisonData = useDashboardComparison(
+        dashboardData?.current,
+        dashboardData?.previous
+    );
+
+    const isLoading = brandsLoading || dataLoading;
+
+    const formatCurrency = (value: number) => value.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    });
+
+    // Verificações de estado em ordem de prioridade
     if (isLoading) {
         return (
             <div className="grid gap-4 md:grid-cols-2">
@@ -54,10 +94,7 @@ export function DashboardCharts() {
                     <p className="text-gray-500 mb-4">
                         Crie uma marca e conecte-a ao Facebook para visualizar os dados
                     </p>
-                    <Link
-                        href="/marcas"
-                        className="text-primary hover:text-primary/90 underline"
-                    >
+                    <Link href="/marcas" className="text-primary hover:text-primary/90 underline">
                         Criar marca
                     </Link>
                 </div>
@@ -80,51 +117,47 @@ export function DashboardCharts() {
         );
     }
 
-    if (!selectedBrand.facebookAccount) {
+    if (!isConfigured) {
         return (
             <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
                 <div className="text-center">
                     <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-                        Conexão necessária
+                        Configuração Necessária
                     </h2>
                     <p className="text-gray-500 mb-4">
-                        Conecte esta marca ao Facebook para visualizar os dados
+                        {!isFacebookConnected
+                            ? "É necessário ter uma conta do Facebook ativa para acessar o dashboard."
+                            : "É necessário conectar uma conta de anúncios do Facebook para visualizar as métricas do dashboard."
+                        }
                     </p>
                     <Link
-                        href={`/marcas/${selectedBrand.id}`}
+                        href={!isFacebookConnected
+                            ? `/marcas/${brandId}`
+                            : `/marcas/${brandId}/configurar-anuncios`
+                        }
                         className="text-primary hover:text-primary/90 underline"
                     >
-                        Conectar ao Facebook
+                        {!isFacebookConnected
+                            ? "Conectar ao Facebook"
+                            : "Configurar Conta de Anúncios"
+                        }
                     </Link>
                 </div>
             </div>
         );
     }
-    // Mock de dados históricos para os gráficos
-    const historicalData = {
-        dates: [
-            "2024-02-18",
-            "2024-02-19",
-            "2024-02-20",
-            "2024-02-21",
-            "2024-02-22",
-            "2024-02-23",
-            "2024-02-24",
-            "2024-02-25",
-        ],
-        metrics: {
-            spent: [150, 200, 180, 220, 240, 200, 180, 210],
-            results: [8, 12, 10, 15, 18, 14, 12, 16],
-            cpa: [18.75, 16.67, 18, 14.67, 13.33, 14.29, 15, 13.13],
-            ctr: [2, 2.2, 2.1, 2.3, 2.4, 2.2, 2.1, 2.3],
-        },
-    };
+
+    if (!dashboardData?.current?.daily) {
+        return null;
+    }
+
+    const dailyData = dashboardData.current.daily;
 
     const chartConfigs = [
         {
-            id: "spent",
+            id: "spend",
             title: "Gasto Diário",
-            data: historicalData.metrics.spent,
+            getData: (data: DailyInsights[]) => data.map(d => d.metrics.spend),
             format: (value: number) =>
                 value.toLocaleString("pt-BR", {
                     style: "currency",
@@ -133,16 +166,20 @@ export function DashboardCharts() {
             color: "rgb(99, 102, 241)",
         },
         {
-            id: "results",
+            id: "actions",
             title: "Resultados Diários",
-            data: historicalData.metrics.results,
+            getData: (data: DailyInsights[]) =>
+                data.map(d =>
+                    d.metrics.actions
+                        .reduce((sum, action) => sum + action.value, 0)
+                ),
             format: (value: number) => value.toString(),
             color: "rgb(34, 197, 94)",
         },
         {
-            id: "cpa",
-            title: "CPA Diário",
-            data: historicalData.metrics.cpa,
+            id: "cpc",
+            title: "CPC Diário",
+            getData: (data: DailyInsights[]) => data.map(d => d.metrics.cpc),
             format: (value: number) =>
                 value.toLocaleString("pt-BR", {
                     style: "currency",
@@ -153,68 +190,112 @@ export function DashboardCharts() {
         {
             id: "ctr",
             title: "CTR Diário",
-            data: historicalData.metrics.ctr,
-            format: (value: number) => `${value.toFixed(2)}%`,
+            getData: (data: DailyInsights[]) => data.map(d => d.metrics.ctr),
+            format: (value: number) => `${(value * 100).toFixed(2)}%`,
             color: "rgb(249, 115, 22)",
         },
     ];
 
-    const getChartData = (config: typeof chartConfigs[0]): ChartData<"line"> => {
+    const getChartData = (config: typeof chartConfigs[0]): ChartData<"line"> => ({
+        labels: dailyData.map(d => d.date),
+        datasets: [
+            {
+                label: config.title,
+                data: config.getData(dailyData),
+                borderColor: config.color,
+                backgroundColor: `${config.color.replace("rgb", "rgba").replace(")", ", 0.5)")}`,
+                tension: 0.4,
+            },
+        ],
+    });
+
+    const comparisonMetrics = (() => {
+        if (!comparisonData) return null;
+
+        const { totals, derived, overview } = comparisonData;
+
+        const cpaTrend: 'up' | 'down' | 'neutral' =
+            derived.cpa.current === derived.cpa.previous ? 'neutral' :
+                derived.cpa.current < derived.cpa.previous ? 'down' : 'up';
+
         return {
-            labels: historicalData.dates,
-            datasets: [
-                {
-                    label: config.title,
-                    data: config.data,
-                    borderColor: config.color,
-                    backgroundColor: `${config.color.replace("rgb", "rgba").replace(")", ", 0.5)")}`,
-                    tension: 0.4,
+            metrics: {
+                spend: formatCurrency(totals.current.spend),
+                actions: totals.current.actions.toString(),
+                cpa: formatCurrency(derived.cpa.current),
+                ctr: `${(overview.ctr.percentage).toFixed(2)}%`
+            },
+            comparisons: {
+                spend: overview.spend,
+                actions: overview.actions,
+                cpa: {
+                    percentage: ((derived.cpa.current - derived.cpa.previous) / derived.cpa.previous) * 100,
+                    trend: cpaTrend
                 },
-            ],
+                ctr: overview.ctr
+            }
         };
-    };
+    })();
 
     return (
-        <div className="grid gap-4 md:grid-cols-2">
-            {chartConfigs.map((config) => (
-                <Card key={config.id} className="p-4">
-                    <h3 className="text-sm font-medium text-muted-foreground mb-4">
-                        {config.title}
-                    </h3>
-                    <div className="h-[200px]">
-                        <Line
-                            data={getChartData(config)}
-                            options={{
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: {
-                                    legend: {
-                                        display: false,
-                                    },
-                                    tooltip: {
-                                        callbacks: {
-                                            label: (context) => {
-                                                const value = context.parsed.y;
-                                                return config.format(value);
+        <div className="space-y-6">
+            <DashboardFilters
+                since={filters.since}
+                until={filters.until}
+                onDateChange={updateDateRange}
+                onComparisonToggle={toggleComparison}
+                onQuickDateSelect={setQuickDateRange}
+                onPreviousPeriod={setPreviousPeriod}
+                onNextPeriod={setNextPeriod}
+                showComparison={filters.comparison || false}
+                canGoToNextPeriod={canGoToNextPeriod}
+            />
+
+            {filters.comparison && comparisonMetrics && (
+                <DashboardComparison {...comparisonMetrics} />
+            )}
+
+            <div className="grid gap-4 md:grid-cols-2">
+                {chartConfigs.map((config) => (
+                    <Card key={config.id} className="p-4">
+                        <h3 className="text-sm font-medium text-muted-foreground mb-4">
+                            {config.title}
+                        </h3>
+                        <div className="h-[200px]">
+                            <Line
+                                data={getChartData(config)}
+                                options={{
+                                    responsive: true,
+                                    maintainAspectRatio: false,
+                                    plugins: {
+                                        legend: {
+                                            display: false,
+                                        },
+                                        tooltip: {
+                                            callbacks: {
+                                                label: (context) => {
+                                                    const value = context.parsed.y;
+                                                    return config.format(value);
+                                                },
                                             },
                                         },
                                     },
-                                },
-                                scales: {
-                                    y: {
-                                        beginAtZero: true,
-                                        ticks: {
-                                            callback: (value) => {
-                                                return config.format(value as number);
+                                    scales: {
+                                        y: {
+                                            beginAtZero: true,
+                                            ticks: {
+                                                callback: (value) => {
+                                                    return config.format(value as number);
+                                                },
                                             },
                                         },
                                     },
-                                },
-                            }}
-                        />
-                    </div>
-                </Card>
-            ))}
+                                }}
+                            />
+                        </div>
+                    </Card>
+                ))}
+            </div>
         </div>
     );
 }

@@ -9,6 +9,15 @@ export interface FacebookAccount {
     updatedAt: string;
 }
 
+export interface FacebookAdAccount {
+    id: number;
+    accountId: string;
+    name: string;
+    brandId: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
 export interface Brand {
     id: number;
     name: string;
@@ -16,4 +25,5 @@ export interface Brand {
     createdAt: string;
     updatedAt: string;
     facebookAccount: FacebookAccount | null;
+    facebookAdAccounts: FacebookAdAccount[];
 }

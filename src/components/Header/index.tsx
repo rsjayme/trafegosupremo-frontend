@@ -42,14 +42,19 @@ export function Header() {
             );
         }
 
-        if (brands.length === 0) {
+        if (!brands || brands.length === 0) {
             return (
-                <Link
-                    href="/marcas"
-                    className="text-sm text-primary hover:underline"
-                >
-                    Conectar marca ao Facebook
-                </Link>
+                <div className="flex items-center gap-2">
+                    <Link
+                        href="/marcas"
+                        className="text-sm text-primary hover:underline"
+                    >
+                        Conectar marca ao Facebook
+                    </Link>
+                    <span className="text-xs text-muted-foreground">
+                        (Necessário para acessar o dashboard)
+                    </span>
+                </div>
             );
         }
 

@@ -1,6 +1,5 @@
 "use client";
 
-import { useAccount } from "@/contexts/AccountContext";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { DashboardMetrics } from "@/components/DashboardMetrics";
@@ -8,9 +7,10 @@ import { DashboardCharts } from "@/components/DashboardCharts";
 import { RecentCampaigns } from "@/components/RecentCampaigns";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Button } from "@/components/ui/button";
+import { useBrand } from "@/contexts/BrandContext";
 
 export default function Dashboard() {
-    const { selectedAccount } = useAccount();
+    const { selectedBrand } = useBrand();
     const router = useRouter();
     const [dateRange, setDateRange] = useState<{
         from: Date | undefined;
@@ -20,7 +20,7 @@ export default function Dashboard() {
         to: undefined,
     });
 
-    if (!selectedAccount) {
+    if (!selectedBrand) {
         return (
             <div className="flex-1 p-6">
                 <div className="main-container">
@@ -55,10 +55,10 @@ export default function Dashboard() {
 
                 <DashboardMetrics
                     dateRange={dateRange}
-                    accountId={selectedAccount.id}
+                    brandId={selectedBrand.id}
                 />
 
-                <DashboardCharts dateRange={dateRange} />
+                <DashboardCharts />
 
                 <RecentCampaigns />
 
