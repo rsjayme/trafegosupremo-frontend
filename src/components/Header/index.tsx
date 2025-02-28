@@ -1,6 +1,7 @@
 "use client";
 
 import { Crown, SignOut } from "@phosphor-icons/react";
+import Link from "next/link";
 import {
     Select,
     SelectContent,
@@ -10,12 +11,12 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { useAccount } from "@/contexts/AccountContext";
+import { useBrand } from "@/contexts/BrandContext";
 import { useEffect, useState } from "react";
 
 export function Header() {
-    const { clearToken } = useAuth();
-    const { accounts, selectedAccount, setSelectedAccount } = useAccount();
+    const { logout } = useAuth();
+    const { brands, selectedBrand, setSelectedBrand, isLoading, error } = useBrand();
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
@@ -26,6 +27,54 @@ export function Header() {
         return null;
     }
 
+    const renderBrandSelector = () => {
+        if (isLoading) {
+            return (
+                <div className="w-[280px] h-10 bg-muted animate-pulse rounded-md" />
+            );
+        }
+
+        if (error) {
+            return (
+                <div className="text-sm text-destructive">
+                    Erro ao carregar marcas
+                </div>
+            );
+        }
+
+        if (brands.length === 0) {
+            return (
+                <Link
+                    href="/marcas"
+                    className="text-sm text-primary hover:underline"
+                >
+                    Conectar marca ao Facebook
+                </Link>
+            );
+        }
+
+        return (
+            <Select
+                value={selectedBrand?.id.toString()}
+                onValueChange={(value) => {
+                    const brand = brands.find((b) => b.id.toString() === value);
+                    setSelectedBrand(brand || null);
+                }}
+            >
+                <SelectTrigger className="w-[280px]">
+                    <SelectValue placeholder="Selecione uma marca" />
+                </SelectTrigger>
+                <SelectContent>
+                    {brands.map((brand) => (
+                        <SelectItem key={brand.id} value={brand.id.toString()}>
+                            {brand.name}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        );
+    };
+
     return (
         <header className="border-b bg-background">
             <div className="px-6 h-16 flex items-center justify-between">
@@ -35,29 +84,12 @@ export function Header() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <Select
-                        value={selectedAccount?.id}
-                        onValueChange={(value) => {
-                            const account = accounts.find((a) => a.id === value);
-                            setSelectedAccount(account || null);
-                        }}
-                    >
-                        <SelectTrigger className="w-[280px]">
-                            <SelectValue placeholder="Selecione uma conta" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {accounts.map((account) => (
-                                <SelectItem key={account.id} value={account.id}>
-                                    {account.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    {renderBrandSelector()}
 
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => clearToken()}
+                        onClick={() => logout()}
                         title="Sair"
                     >
                         <SignOut className="h-5 w-5" />

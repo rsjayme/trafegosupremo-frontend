@@ -7,6 +7,11 @@ export const brandsService = {
         return response.data;
     },
 
+    async listConnectedBrands(): Promise<Brand[]> {
+        const response = await api.get<Brand[]>("/brands?hasConnection=true");
+        return response.data;
+    },
+
     async createBrand(name: string): Promise<Brand> {
         const response = await api.post<Brand>("/brands", { name });
         return response.data;
