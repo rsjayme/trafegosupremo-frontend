@@ -2,10 +2,11 @@
 
 import { Card } from "@/components/ui/card";
 import { ArrowDown, ArrowUp, DollarSign, Target, Eye, MousePointer, RefreshCcw, AlertCircle } from "lucide-react";
-import { subDays } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { DashboardService } from "@/services/dashboard";
+import { type FacebookCampaignMetrics } from "@/types/dashboard";
 
 interface MetricCardProps {
     title: string;
@@ -69,11 +70,7 @@ interface DashboardMetricsProps {
 }
 
 export function DashboardMetrics({ dateRange, brandId }: DashboardMetricsProps) {
-    // Calcula o período anterior para comparação
-    const previousDateRange = dateRange.from && dateRange.to ? {
-        from: subDays(dateRange.from, dateRange.to.getTime() - dateRange.from.getTime()),
-        to: subDays(dateRange.to, dateRange.to.getTime() - dateRange.from.getTime())
-    } : undefined;
+    const dashboardService = new DashboardService();
 
     const currentFilters = {
         brandId,
@@ -81,25 +78,14 @@ export function DashboardMetrics({ dateRange, brandId }: DashboardMetricsProps) 
         until: dateRange.to?.toISOString().split('T')[0] || ''
     };
 
-    const previousFilters = previousDateRange?.from && previousDateRange?.to ? {
-        brandId,
-        since: previousDateRange.from.toISOString().split('T')[0],
-        until: previousDateRange.to.toISOString().split('T')[0]
-    } : undefined;
-
     const {
-        data: currentData,
+        data: dashboardData,
         isLoading,
         error,
         refetch
     } = useDashboardData(currentFilters, {
         enabled: !!dateRange.from && !!dateRange.to
     });
-
-    const { data: previousData } = useDashboardData(
-        previousFilters || { brandId, since: '', until: '' },
-        { enabled: !!previousFilters }
-    );
 
     const handleRefresh = async () => {
         try {
@@ -111,20 +97,24 @@ export function DashboardMetrics({ dateRange, brandId }: DashboardMetricsProps) 
     };
 
     const calculateComparison = (current?: number, previous?: number) => {
-        if (!current || !previous) return undefined;
+        if (!current || !previous || isNaN(current) || isNaN(previous)) return undefined;
         return Number((((current - previous) / previous) * 100).toFixed(1));
     };
 
-    const formatCurrency = (value?: number) => {
-        if (!value) return "R$ 0,00";
+    const formatCurrency = (value: number) => {
+        if (isNaN(value)) return "R$ 0,00";
+
         return value.toLocaleString('pt-BR', {
             style: 'currency',
-            currency: 'BRL'
+            currency: 'BRL',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
         });
     };
 
-    const formatNumber = (value?: number) => {
-        if (!value) return "0";
+    const formatNumber = (value: number) => {
+        if (isNaN(value)) return "0";
+
         return value.toLocaleString('pt-BR');
     };
 
@@ -142,38 +132,37 @@ export function DashboardMetrics({ dateRange, brandId }: DashboardMetricsProps) 
         );
     }
 
-    const currentMetrics = currentData?.current?.overview || {
-        spend: 0,
-        reach: 0,
-        impressions: 0,
-        clicks: 0
-    };
+    const currentData: FacebookCampaignMetrics[] = dashboardData?.current || [];
+    const previousData: FacebookCampaignMetrics[] = dashboardData?.previous || [];
 
-    const previousMetrics = previousData?.current?.overview;
+    const currentMetrics = dashboardService.calculateAggregatedMetrics(currentData);
+    const previousMetrics = previousData.length > 0 ?
+        dashboardService.calculateAggregatedMetrics(previousData) :
+        undefined;
 
     const metrics = [
         {
             title: "Gasto Total",
-            value: formatCurrency(currentMetrics.spend),
-            comparison: calculateComparison(currentMetrics.spend, previousMetrics?.spend),
+            value: formatCurrency(currentMetrics?.spend || 0),
+            comparison: calculateComparison(currentMetrics?.spend, previousMetrics?.spend),
             icon: <DollarSign className="h-5 w-5 text-primary" />,
         },
         {
             title: "Alcance",
-            value: formatNumber(currentMetrics.reach),
-            comparison: calculateComparison(currentMetrics.reach, previousMetrics?.reach),
+            value: formatNumber(currentMetrics?.reach || 0),
+            comparison: calculateComparison(currentMetrics?.reach, previousMetrics?.reach),
             icon: <Target className="h-5 w-5 text-primary" />,
         },
         {
             title: "Impressões",
-            value: formatNumber(currentMetrics.impressions),
-            comparison: calculateComparison(currentMetrics.impressions, previousMetrics?.impressions),
+            value: formatNumber(currentMetrics?.impressions || 0),
+            comparison: calculateComparison(currentMetrics?.impressions, previousMetrics?.impressions),
             icon: <Eye className="h-5 w-5 text-primary" />,
         },
         {
             title: "Cliques",
-            value: formatNumber(currentMetrics.clicks),
-            comparison: calculateComparison(currentMetrics.clicks, previousMetrics?.clicks),
+            value: formatNumber(currentMetrics?.clicks || 0),
+            comparison: calculateComparison(currentMetrics?.clicks, previousMetrics?.clicks),
             icon: <MousePointer className="h-5 w-5 text-primary" />,
         },
     ];

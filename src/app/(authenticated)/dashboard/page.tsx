@@ -3,8 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { DashboardMetrics } from "@/components/DashboardMetrics";
-import { DashboardCharts } from "@/components/DashboardCharts";
-import { RecentCampaigns } from "@/components/RecentCampaigns";
+import { DashboardCampaigns } from "@/components/DashboardCampaigns";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { Button } from "@/components/ui/button";
 import { useBrand } from "@/contexts/BrandContext";
@@ -40,6 +39,44 @@ export default function Dashboard() {
         );
     }
 
+    const isConfigured = !!(
+        selectedBrand?.facebookAccount?.status === 'active' &&
+        (selectedBrand?.facebookAdAccounts || []).length > 0
+    );
+
+    if (!isConfigured) {
+        return (
+            <div className="flex-1 p-6">
+                <div className="main-container">
+                    <h1 className="text-2xl font-semibold mb-6">Dashboard</h1>
+                    <div className="bg-card p-6 rounded-lg shadow-sm border text-center space-y-4">
+                        <p className="text-muted-foreground">
+                            {!selectedBrand.facebookAccount?.status
+                                ? "É necessário ter uma conta do Facebook ativa para acessar o dashboard."
+                                : "É necessário conectar uma conta de anúncios do Facebook para visualizar as métricas do dashboard."
+                            }
+                        </p>
+                        <Button
+                            onClick={() => router.push(
+                                !selectedBrand.facebookAccount?.status
+                                    ? `/marcas/${selectedBrand.id}`
+                                    : `/marcas/${selectedBrand.id}/configurar-anuncios`
+                            )}
+                        >
+                            {!selectedBrand.facebookAccount?.status
+                                ? "Conectar ao Facebook"
+                                : "Configurar Conta de Anúncios"
+                            }
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    const since = dateRange.from?.toISOString().split('T')[0] || '';
+    const until = dateRange.to?.toISOString().split('T')[0] || '';
+
     return (
         <div className="flex-1 p-6">
             <div className="main-container space-y-6">
@@ -58,18 +95,13 @@ export default function Dashboard() {
                     brandId={selectedBrand.id}
                 />
 
-                <DashboardCharts />
-
-                <RecentCampaigns />
-
-                <div className="flex justify-end">
-                    <Button
-                        variant="outline"
-                        onClick={() => router.push("/campanhas")}
-                    >
-                        Ver Todas as Campanhas
-                    </Button>
-                </div>
+                {dateRange.from && dateRange.to && (
+                    <DashboardCampaigns
+                        brandId={selectedBrand.id}
+                        since={since}
+                        until={until}
+                    />
+                )}
             </div>
         </div>
     );
