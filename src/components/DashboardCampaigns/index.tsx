@@ -1,12 +1,12 @@
-"use client";
-
+import { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useDashboardData } from "@/hooks/useDashboardData";
+import { ActionSelector } from "@/components/ActionSelector";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { type FacebookCampaignMetrics, type DashboardFilters } from "@/types/dashboard";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { CampaignItem } from "./CampaignItem";
+import { useDashboardData } from "@/hooks/useDashboardData";
+import { loadGlobalActions, saveGlobalActions } from "./storage";
 
 interface DashboardCampaignsProps {
     brandId: number;
@@ -15,6 +15,26 @@ interface DashboardCampaignsProps {
 }
 
 export function DashboardCampaigns({ brandId, since, until }: DashboardCampaignsProps) {
+    // Global actions state
+    const [globalActions, setGlobalActions] = useState<string[]>(() =>
+        loadGlobalActions()
+    );
+
+    // Campaign-specific actions state
+    const [campaignActions, setCampaignActions] = useState<Record<string, string[]>>({});
+
+    // Persist global actions
+    useEffect(() => {
+        saveGlobalActions(globalActions);
+    }, [globalActions]);
+
+    const handleCampaignActionChange = (campaignId: string, actions: string[]) => {
+        setCampaignActions(prev => ({
+            ...prev,
+            [campaignId]: actions
+        }));
+    };
+
     const filters: DashboardFilters = {
         brandId,
         since,
@@ -24,34 +44,6 @@ export function DashboardCampaigns({ brandId, since, until }: DashboardCampaigns
     const { data, isLoading } = useDashboardData(filters, {
         enabled: !!brandId && !!since && !!until
     });
-
-    const formatCurrency = (value: string) => {
-        const number = Number(value);
-        if (isNaN(number)) return "R$ 0,00";
-
-        return number.toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        });
-    };
-
-    const formatNumber = (value: string) => {
-        const number = Number(value);
-        if (isNaN(number)) return "0";
-
-        return number.toLocaleString("pt-BR");
-    };
-
-    const formatPercent = (value: string) => {
-        const number = Number(value);
-        if (isNaN(number)) return "0,00%";
-
-        return `${number.toFixed(2).replace('.', ',')}%`;
-    };
-
-    const campaigns = data?.current || [];
 
     if (isLoading) {
         return (
@@ -63,7 +55,10 @@ export function DashboardCampaigns({ brandId, since, until }: DashboardCampaigns
                 <ScrollArea className="h-[400px]">
                     <div className="p-4 space-y-4">
                         {Array.from({ length: 5 }).map((_, i) => (
-                            <Skeleton key={i} className="h-12 w-full" />
+                            <div key={i} className="space-y-4">
+                                <Skeleton className="h-6 w-1/3" />
+                                <Skeleton className="h-24 w-full" />
+                            </div>
                         ))}
                     </div>
                 </ScrollArea>
@@ -71,7 +66,7 @@ export function DashboardCampaigns({ brandId, since, until }: DashboardCampaigns
         );
     }
 
-    if (campaigns.length === 0) {
+    if (!data?.current?.length) {
         return (
             <Card className="p-6">
                 <div className="text-center space-y-2">
@@ -87,79 +82,32 @@ export function DashboardCampaigns({ brandId, since, until }: DashboardCampaigns
     }
 
     return (
-        <Card>
-            <div className="p-6 border-b">
-                <h3 className="text-lg font-medium">Campanhas</h3>
-                <p className="text-sm text-muted-foreground">
-                    Detalhes de todas as campanhas ativas no período
-                </p>
+        <Card className="overflow-hidden">
+            <div className="p-6 border-b flex items-center justify-between">
+                <div>
+                    <h3 className="text-lg font-medium">Campanhas</h3>
+                    <p className="text-sm text-muted-foreground">
+                        {data.current.length} campanha{data.current.length === 1 ? '' : 's'} ativa{data.current.length === 1 ? '' : 's'} no período
+                    </p>
+                </div>
+                <ActionSelector
+                    selectedActions={globalActions}
+                    onSelectionChange={setGlobalActions}
+                />
             </div>
-            <ScrollArea className="h-[400px]">
-                <Table>
-                    <TableHeader>
-                        <TableRow className="hover:bg-transparent">
-                            <TableHead className="w-[300px]">Campanha</TableHead>
-                            <TableHead className="text-right font-medium">Gasto</TableHead>
-                            <TableHead className="text-right font-medium">Alcance</TableHead>
-                            <TableHead className="text-right font-medium">Impressões</TableHead>
-                            <TableHead className="text-right font-medium">Cliques</TableHead>
-                            <TableHead className="text-right font-medium">CTR</TableHead>
-                            <TableHead className="text-right font-medium">CPC</TableHead>
-                            <TableHead className="text-right font-medium">CPM</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {campaigns.map((campaign: FacebookCampaignMetrics) => (
-                            <TableRow
-                                key={`${campaign.account_id}-${campaign.campaign_name}`}
-                                className="group hover:bg-muted/50 transition-colors"
-                            >
-                                <TableCell className="max-w-[300px]">
-                                    <div>
-                                        <p className="font-medium truncate" title={campaign.campaign_name}>
-                                            {campaign.campaign_name}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                            ID: {campaign.account_id}
-                                        </p>
-                                    </div>
-                                </TableCell>
-                                <TableCell className="text-right tabular-nums">
-                                    <span className="font-medium text-green-600">
-                                        {formatCurrency(campaign.spend)}
-                                    </span>
-                                </TableCell>
-                                <TableCell className="text-right tabular-nums">
-                                    {formatNumber(campaign.reach)}
-                                </TableCell>
-                                <TableCell className="text-right tabular-nums">
-                                    {formatNumber(campaign.impressions)}
-                                </TableCell>
-                                <TableCell className="text-right tabular-nums">
-                                    {formatNumber(campaign.clicks)}
-                                </TableCell>
-                                <TableCell className="text-right tabular-nums">
-                                    <span className={cn(
-                                        "px-2 py-1 rounded-full text-xs font-medium",
-                                        Number(campaign.ctr) > 2
-                                            ? "bg-green-100 text-green-700"
-                                            : Number(campaign.ctr) > 1
-                                                ? "bg-yellow-100 text-yellow-700"
-                                                : "bg-red-100 text-red-700"
-                                    )}>
-                                        {formatPercent(campaign.ctr)}
-                                    </span>
-                                </TableCell>
-                                <TableCell className="text-right tabular-nums">
-                                    {formatCurrency(campaign.cpc)}
-                                </TableCell>
-                                <TableCell className="text-right tabular-nums">
-                                    {formatCurrency(campaign.cpm)}
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+
+            <ScrollArea className="h-[600px]">
+                <div className="divide-y">
+                    {data.current.map((campaign: FacebookCampaignMetrics) => (
+                        <CampaignItem
+                            key={`${campaign.account_id}-${campaign.campaign_name}`}
+                            campaign={campaign}
+                            globalActions={globalActions}
+                            campaignActions={campaignActions}
+                            onCampaignActionChange={handleCampaignActionChange}
+                        />
+                    ))}
+                </div>
             </ScrollArea>
         </Card>
     );
