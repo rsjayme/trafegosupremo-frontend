@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { DashboardService } from "@/services/dashboard";
 import { type FacebookCampaignMetrics } from "@/types/dashboard";
+import { useAccount } from "@/contexts/AccountContext";
 
 interface MetricCardProps {
     title: string;
@@ -19,15 +20,21 @@ interface MetricCardProps {
 function MetricCard({ title, value, comparison, icon, isLoading }: MetricCardProps) {
     if (isLoading) {
         return (
-            <Card className="p-6">
+            <Card className="p-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 opacity-5">
+                    {icon}
+                </div>
                 <div className="flex items-center gap-4">
                     <div className="p-3 bg-primary/10 rounded-full">
                         <RefreshCcw className="h-5 w-5 text-primary animate-spin" />
                     </div>
                     <div className="space-y-2 w-full">
-                        <p className="text-sm text-muted-foreground">{title}</p>
-                        <div className="h-7 bg-gray-200 animate-pulse rounded" />
-                        <div className="h-4 bg-gray-100 animate-pulse rounded w-3/4" />
+                        <div className="flex items-center gap-2">
+                            <p className="text-sm text-muted-foreground">{title}</p>
+                            <div className="h-5 bg-gray-100 animate-pulse rounded-full w-16" />
+                        </div>
+                        <div className="h-8 bg-gray-200 animate-pulse rounded" />
+                        <div className="h-4 bg-gray-100 animate-pulse rounded w-24" />
                     </div>
                 </div>
             </Card>
@@ -37,22 +44,39 @@ function MetricCard({ title, value, comparison, icon, isLoading }: MetricCardPro
     const isPositive = comparison && comparison > 0;
 
     return (
-        <Card className="p-6">
+        <Card className="p-6 hover:shadow-md transition-shadow relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 opacity-5">
+                {icon}
+            </div>
             <div className="flex items-center gap-4">
                 <div className="p-3 bg-primary/10 rounded-full">
                     {icon}
                 </div>
-                <div>
-                    <p className="text-sm text-muted-foreground">{title}</p>
-                    <h3 className="text-2xl font-bold">{value}</h3>
+                <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                        <p className="text-sm text-muted-foreground">{title}</p>
+                        {comparison !== undefined && (
+                            <span
+                                className={`px-2 py-0.5 text-xs rounded-full ${isPositive
+                                    ? "bg-green-100 text-green-800"
+                                    : "bg-red-100 text-red-800"
+                                    }`}
+                            >
+                                <span className="flex items-center gap-0.5">
+                                    {isPositive ? (
+                                        <ArrowUp className="h-3 w-3" />
+                                    ) : (
+                                        <ArrowDown className="h-3 w-3" />
+                                    )}
+                                    {Math.abs(comparison)}%
+                                </span>
+                            </span>
+                        )}
+                    </div>
+                    <h3 className="text-2xl font-bold mt-1">{value}</h3>
                     {comparison !== undefined && (
-                        <p className={`text-sm flex items-center gap-1 ${isPositive ? "text-green-600" : "text-red-600"}`}>
-                            {isPositive ? (
-                                <ArrowUp className="h-4 w-4" />
-                            ) : (
-                                <ArrowDown className="h-4 w-4" />
-                            )}
-                            {Math.abs(comparison)}% em relação ao período anterior
+                        <p className="text-xs text-muted-foreground mt-1">
+                            vs período anterior
                         </p>
                     )}
                 </div>
@@ -68,14 +92,15 @@ interface DashboardMetricsProps {
     };
     brandId: number;
 }
-
 export function DashboardMetrics({ dateRange, brandId }: DashboardMetricsProps) {
     const dashboardService = new DashboardService();
+    const { selectedAccount } = useAccount();
 
     const currentFilters = {
         brandId,
         since: dateRange.from?.toISOString().split('T')[0] || '',
-        until: dateRange.to?.toISOString().split('T')[0] || ''
+        until: dateRange.to?.toISOString().split('T')[0] || '',
+        accountId: selectedAccount?.accountId
     };
 
     const {
@@ -84,7 +109,7 @@ export function DashboardMetrics({ dateRange, brandId }: DashboardMetricsProps) 
         error,
         refetch
     } = useDashboardData(currentFilters, {
-        enabled: !!dateRange.from && !!dateRange.to
+        enabled: !!dateRange.from && !!dateRange.to && !!selectedAccount
     });
 
     const handleRefresh = async () => {

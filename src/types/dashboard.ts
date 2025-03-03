@@ -2,6 +2,24 @@ export interface DashboardFilters {
     brandId: number;
     since: string;
     until: string;
+    accountId?: string;
+    comparison?: boolean;
+}
+
+export interface AggregatedMetrics {
+    impressions: number;
+    reach: number;
+    clicks: number;
+    spend: number;
+    ctr: number;
+    cpc: number;
+    cpm: number;
+    frequency: number;
+    actions: Array<{
+        type: string;
+        value: number;
+        cost: number;
+    }>;
 }
 
 export interface FacebookAction {
@@ -32,7 +50,7 @@ export interface FacebookCampaignMetrics {
 
 export interface DashboardData {
     current: FacebookCampaignMetrics[];
-    previous: FacebookCampaignMetrics[];
+    previous?: FacebookCampaignMetrics[];
 }
 
 export interface DashboardMetric {

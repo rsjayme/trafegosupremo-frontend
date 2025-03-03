@@ -1,34 +1,42 @@
-# Dashboard Metrics Fix Plan
+# Plano de Correção do Dashboard Metrics
 
 ## Problema
-- O componente DashboardMetrics está usando hooks e contextos legados que fazem chamadas para endpoints inexistentes
-- Precisa ser atualizado para usar o novo serviço de dashboard que já está configurado corretamente
+O dashboard está tentando buscar métricas mesmo quando não há uma conta selecionada, causando erros porque o accountId é necessário para buscar as métricas.
 
-## Passos
+## Análise
+1. No componente DashboardMetrics há um bug onde a propriedade 'enabled' está duplicada nas opções do useDashboardData:
+```typescript
+{
+    enabled: !!dateRange.from && !!dateRange.to && !!selectedAccount,
+    enabled: !!dateRange.from && !!dateRange.to
+}
+```
+A segunda linha sobrescreve a primeira, removendo a verificação de `!!selectedAccount`.
 
-1. Remover dependências desnecessárias
-   - Remover useFacebookData
-   - Remover FacebookContext
-   - Remover importações relacionadas a campanhas
+2. A estrutura atual dos contextos está correta:
+   - BrandContext gerencia a marca selecionada
+   - AccountContext gerencia a conta do Facebook selecionada
+   - O accountId é obtido corretamente do selectedAccount
 
-2. Atualizar DashboardMetrics
-   - Usar o novo serviço de dashboard ao invés do useFacebookData
-   - Atualizar props para receber brandId ao invés de accountId
-   - Usar o hook useDashboardData para buscar métricas
+## Solução
 
-3. Ajustar chamada de métricas
-   - Usar /facebook/insights/:brandId/overview ao invés de campanhas
-   - Ajustar formatação dos dados para o novo formato de resposta
-   - Manter a lógica de comparação entre períodos
+1. Corrigir o bug no DashboardMetrics removendo a duplicação da propriedade 'enabled':
+```typescript
+{
+    enabled: !!dateRange.from && !!dateRange.to && !!selectedAccount
+}
+```
 
-4. Manter funcionalidades existentes
-   - Formatação de números e moeda
-   - Cálculos de comparação percentual
-   - Loading states e tratamento de erros
-   - Botão de atualização
+2. Para melhorar a experiência do usuário:
+   - Adicionar um feedback visual quando não houver conta selecionada
+   - Exibir uma mensagem orientando o usuário a selecionar uma conta
 
-## Benefícios
-- Remove código obsoleto
-- Usa a API correta do backend
-- Mantém todas as funcionalidades existentes
-- Simplifica o fluxo de dados
+## Próximos Passos
+
+1. Corrigir o bug no componente DashboardMetrics
+2. Implementar feedback visual para caso de conta não selecionada
+3. Testar as métricas após a correção
+4. Verificar se há outros componentes que podem ter bugs similares
+
+## Modo de Implementação
+Após aprovação deste plano, devemos mudar para o modo "Code" para implementar as correções necessárias.

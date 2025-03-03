@@ -53,7 +53,6 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
 
     const isConfigured = (brand: Brand): boolean => {
         return !!(brand.facebookAccount?.status === 'active' &&
-            brand.facebookAccount?.accountId &&
             brand.facebookAdAccounts?.length > 0);
     };
 

@@ -13,9 +13,18 @@ export class DashboardService {
      * @returns Promise with current and optional previous period data
      */
     async getDashboardData(filters: DashboardFilters): Promise<DashboardData> {
+        if (!filters.accountId) {
+            throw new Error('accountId é necessário para buscar métricas');
+        }
+
         const { data } = await api.get<FacebookCampaignMetrics[]>(
             `/facebook/insights/${filters.brandId}/overview`,
-            { params: { since: filters.since, until: filters.until } }
+            {
+                params: {
+                    since: filters.since,
+                    until: filters.until
+                }
+            }
         );
 
         // Se estiver em modo de comparação, busca dados do período anterior
@@ -28,8 +37,14 @@ export class DashboardService {
             };
 
             const { data: previousData } = await api.get<FacebookCampaignMetrics[]>(
-                `/facebook/insights/${filters.brandId}/overview`,
-                { params: { since: previousFilters.since, until: previousFilters.until } }
+                `/facebook/insights`,
+                {
+                    params: {
+                        accountId: filters.accountId,
+                        since: previousFilters.since,
+                        until: previousFilters.until
+                    }
+                }
             );
 
             return {

@@ -6,13 +6,13 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { brandsService } from '@/services/brands';
-import { FacebookConnect } from '../FacebookConnect';
-import { Brand } from '@/types/brand';
+import { useRouter } from 'next/navigation'
+
 
 export function BrandForm() {
+    const router = useRouter();
     const [name, setName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [createdBrand, setCreatedBrand] = useState<Brand | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -24,9 +24,9 @@ export function BrandForm() {
 
         setIsLoading(true);
         try {
-            const brand = await brandsService.createBrand(name);
-            setCreatedBrand(brand);
+            await brandsService.createBrand(name);
             toast.success('Marca criada com sucesso!');
+            router.push('/marcas');
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Erro ao criar marca');
         } finally {
@@ -34,27 +34,6 @@ export function BrandForm() {
         }
     };
 
-    const handleFacebookConnect = async (data: { accessToken: string; accountId: string }) => {
-        if (!createdBrand) return;
-
-        try {
-            await brandsService.connectFacebook(createdBrand.id, data.accessToken, data.accountId);
-            toast.success('Conta do Facebook conectada com sucesso!');
-            // Redireciona para a página da marca após conectar
-            window.location.href = `/marcas/${createdBrand.id}`;
-        } catch (error) {
-            toast.error(error instanceof Error ? error.message : 'Erro ao conectar conta do Facebook');
-        }
-    };
-
-    if (createdBrand) {
-        return (
-            <FacebookConnect
-                brandId={createdBrand.id}
-                onConnect={handleFacebookConnect}
-            />
-        );
-    }
 
     return (
         <Card className="p-6">

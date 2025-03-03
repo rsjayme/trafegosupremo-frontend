@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
 import { ActionSelector } from "@/components/ActionSelector";
@@ -7,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CampaignItem } from "./CampaignItem";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { loadGlobalActions, saveGlobalActions } from "./storage";
+import { useAccount } from "@/contexts/AccountContext";
 
 interface DashboardCampaignsProps {
     brandId: number;
@@ -15,15 +18,12 @@ interface DashboardCampaignsProps {
 }
 
 export function DashboardCampaigns({ brandId, since, until }: DashboardCampaignsProps) {
-    // Global actions state
+    const { selectedAccount } = useAccount();
     const [globalActions, setGlobalActions] = useState<string[]>(() =>
         loadGlobalActions()
     );
-
-    // Campaign-specific actions state
     const [campaignActions, setCampaignActions] = useState<Record<string, string[]>>({});
 
-    // Persist global actions
     useEffect(() => {
         saveGlobalActions(globalActions);
     }, [globalActions]);
@@ -38,12 +38,27 @@ export function DashboardCampaigns({ brandId, since, until }: DashboardCampaigns
     const filters: DashboardFilters = {
         brandId,
         since,
-        until
+        until,
+        accountId: selectedAccount?.accountId
     };
 
+    const queryEnabled = !!brandId && !!since && !!until && !!selectedAccount?.accountId;
+
     const { data, isLoading } = useDashboardData(filters, {
-        enabled: !!brandId && !!since && !!until
+        enabled: queryEnabled
     });
+
+    if (!queryEnabled) {
+        return (
+            <Card className="p-6">
+                <div className="text-center space-y-2">
+                    <p className="text-lg font-medium text-muted-foreground">
+                        Selecione uma conta no menu superior para visualizar as campanhas
+                    </p>
+                </div>
+            </Card>
+        );
+    }
 
     if (isLoading) {
         return (
@@ -90,10 +105,6 @@ export function DashboardCampaigns({ brandId, since, until }: DashboardCampaigns
                         {data.current.length} campanha{data.current.length === 1 ? '' : 's'} ativa{data.current.length === 1 ? '' : 's'} no período
                     </p>
                 </div>
-                <ActionSelector
-                    selectedActions={globalActions}
-                    onSelectionChange={setGlobalActions}
-                />
             </div>
 
             <ScrollArea className="h-[600px]">

@@ -11,6 +11,7 @@ import { Brand } from "@/types/brand";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { FacebookConnectButton } from "@/components/brands/FacebookConnect";
+import { AdAccountSelect } from "@/components/brands/AdAccountSelect";
 
 export default function Marcas() {
     const router = useRouter();
@@ -119,41 +120,88 @@ export default function Marcas() {
                                     </div>
 
                                     <div className="space-y-3">
-                                        <div className="flex items-center gap-3">
-                                            {brand.facebookAccount ? (
-                                                <div className="flex items-center gap-2 text-sm">
-                                                    <div className="w-2 h-2 rounded-full bg-green-500" />
-                                                    <span className="text-green-600 font-medium">
-                                                        Conectado ao Facebook
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-center justify-between w-full">
+                                        <div className="space-y-3">
+                                            {/* Status do Facebook */}
+                                            <div className="flex items-center gap-3">
+                                                {brand.facebookAccount ? (
                                                     <div className="flex items-center gap-2 text-sm">
-                                                        <div className="w-2 h-2 rounded-full bg-gray-300" />
-                                                        <span className="text-gray-500">
-                                                            Facebook não conectado
+                                                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                                                        <span className="text-green-600 font-medium">
+                                                            Conectado ao Facebook
                                                         </span>
                                                     </div>
-                                                    <FacebookConnectButton
+                                                ) : (
+                                                    <div className="flex items-center justify-between w-full">
+                                                        <div className="flex items-center gap-2 text-sm">
+                                                            <div className="w-2 h-2 rounded-full bg-gray-300" />
+                                                            <span className="text-gray-500">
+                                                                Facebook não conectado
+                                                            </span>
+                                                        </div>
+                                                        <FacebookConnectButton
+                                                            brandId={brand.id}
+                                                            onConnect={loadBrands}
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Status da Conta de Anúncio */}
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2 text-sm">
+                                                    {brand.facebookAdAccounts.length > 0 ? (
+                                                        <>
+                                                            <div className="w-2 h-2 rounded-full bg-green-500" />
+                                                            <span className="text-green-600 font-medium">
+                                                                {brand.facebookAdAccounts.length} conta{brand.facebookAdAccounts.length > 1 ? 's' : ''} de anúncio conectada{brand.facebookAdAccounts.length > 1 ? 's' : ''}
+                                                            </span>
+                                                        </>
+                                                    ) : brand.facebookAccount ? (
+                                                        <>
+                                                            <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                                                            <span className="text-yellow-600">
+                                                                Sem contas de anúncio
+                                                            </span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <div className="w-2 h-2 rounded-full bg-gray-300" />
+                                                            <span className="text-gray-500">
+                                                                Conecte o Facebook primeiro
+                                                            </span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                                {brand.facebookAccount && brand.facebookAdAccounts.length === 0 && (
+                                                    <AdAccountSelect
                                                         brandId={brand.id}
-                                                        onConnect={loadBrands}
+                                                        onAccountSelect={(success: boolean) => {
+                                                            if (success) loadBrands();
+                                                        }}
                                                     />
+                                                )}
+                                            </div>
+
+                                            {/* Detalhes das Contas */}
+                                            {brand.facebookAccount && (
+                                                <div className="space-y-1">
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Facebook: {brand.facebookAccount.name}
+                                                    </p>
+                                                    {brand.facebookAdAccounts.map((account) => (
+                                                        <p key={account.id} className="text-sm text-muted-foreground">
+                                                            Anúncios: {account.name}
+                                                        </p>
+                                                    ))}
                                                 </div>
                                             )}
-                                        </div>
 
-                                        {brand.facebookAccount && (
-                                            <p className="text-sm text-muted-foreground">
-                                                Conta: {brand.facebookAccount.name}
-                                            </p>
-                                        )}
-
-                                        <div className="flex items-center gap-1 text-xs text-muted-foreground pt-2">
-                                            <Calendar className="h-3.5 w-3.5" />
-                                            <span>
-                                                Criada em {format(new Date(brand.createdAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                                            </span>
+                                            <div className="flex items-center gap-1 text-xs text-muted-foreground pt-2">
+                                                <Calendar className="h-3.5 w-3.5" />
+                                                <span>
+                                                    Criada em {format(new Date(brand.createdAt), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

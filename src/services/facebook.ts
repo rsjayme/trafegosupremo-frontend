@@ -7,6 +7,21 @@ export interface FacebookAccount {
     status: string;
 }
 
+export interface FacebookAdAccount {
+    id: string;
+    account_id: string;
+    name: string;
+    business: {
+        id: string | null;
+    }
+}
+
+export interface ConnectAdAccountDto {
+    accountId: string;
+    accountName: string;
+    businessId?: string;
+}
+
 export interface Campaign {
     id: string;
     name: string;
@@ -107,6 +122,21 @@ class FacebookService {
 
     clearMetricsCache(): void {
         this.metricsCache.clear();
+    }
+
+    async getAvailableAdAccounts(): Promise<FacebookAdAccount[]> {
+        const response = await api.get<FacebookAdAccount[]>('/facebook/available-ad-accounts');
+        return response.data;
+    }
+
+    async getBrandAdAccounts(brandId: number): Promise<FacebookAdAccount[]> {
+        const response = await api.get<FacebookAdAccount[]>(`/facebook/brands/${brandId}/ad-accounts`);
+        return response.data;
+    }
+
+    async connectAdAccount(brandId: number, data: ConnectAdAccountDto): Promise<FacebookAdAccount> {
+        const response = await api.post<FacebookAdAccount>(`/facebook/brands/${brandId}/ad-accounts`, data);
+        return response.data;
     }
 }
 
