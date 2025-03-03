@@ -1,17 +1,10 @@
 "use client";
 
-import { useAuth } from "@/contexts/AuthContext";
-import { useAccount } from "@/contexts/AccountContext";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ReportConfig, type Metric } from "@/components/ReportConfig";
 import { CustomReport } from "@/components/CustomReport";
-import { Button } from "@/components/ui/button";
 
 export default function Relatorios() {
-    const { token } = useAuth();
-    const { selectedAccount } = useAccount();
-    const router = useRouter();
     const [config, setConfig] = useState<{
         metrics: Metric[];
         dateRange: { from: Date | undefined; to: Date | undefined };
@@ -32,40 +25,6 @@ export default function Relatorios() {
         },
         status: "all",
     });
-
-    useEffect(() => {
-        if (!token) {
-            router.replace("/login");
-        }
-    }, [token, router]);
-
-    if (!token) {
-        return (
-            <div className="flex-1 flex items-center justify-center">
-                <p className="text-muted-foreground">Redirecionando...</p>
-            </div>
-        );
-    }
-
-    if (!selectedAccount) {
-        return (
-            <div className="flex-1 p-6">
-                <div className="main-container">
-                    <h1 className="text-2xl font-semibold mb-6">Relatórios</h1>
-                    <div className="bg-card p-6 rounded-lg shadow-sm border text-center space-y-4">
-                        <p className="text-muted-foreground">
-                            Você precisa vincular uma conta de anúncios para acessar os relatórios.
-                        </p>
-                        <Button
-                            onClick={() => router.push("/configuracoes")}
-                        >
-                            Ir para Configurações
-                        </Button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="flex-1 p-6">
