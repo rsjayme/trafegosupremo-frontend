@@ -9,7 +9,7 @@ import { mockData } from "@/mock/reports-data";
 
 export interface Widget {
     id: string;
-    type: "overview" | "pieChart" | "funnel" | "lineChart" | "barChart";
+    type: "overview" | "pieChart" | "funnel";
     title: string;
     position: {
         x: number;
@@ -24,7 +24,6 @@ export interface Widget {
         metrics?: string[];
         demographic?: string;
         funnelMetrics?: string[]; // Métricas específicas para o funil
-        campaignId?: string; // ID da campanha selecionada
         dateRange: {
             start: Date | null;
             end: Date | null;
@@ -32,7 +31,7 @@ export interface Widget {
     };
 }
 
-export default function Relatorios() {
+export default function Relatorios2() {
     const [widgets, setWidgets] = useState<Widget[]>([]);
 
     const handleAddWidget = (widget: Widget) => {
@@ -58,7 +57,7 @@ export default function Relatorios() {
                 <div className="flex-1 p-6">
                     <div className="main-container space-y-6">
                         <div className="flex items-center justify-between">
-                            <h1 className="text-2xl font-semibold">Relatórios</h1>
+                            <h1 className="text-2xl font-semibold">Relatórios 2.0</h1>
                         </div>
                         <ReportsCanvas
                             widgets={widgets}
