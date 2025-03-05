@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { DndProvider } from "react-dnd";
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import { Button } from "@/components/ui/button";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { ReportsSidebar } from "@/components/ReportsSidebar";
 import { ReportsCanvas } from "@/components/ReportsCanvas";
@@ -66,12 +69,21 @@ export interface Widget {
         metrics?: string[];
         demographic?: string;
         funnelMetrics?: string[];
-        campaignId?: string;
+        campaignId?: string; // Mantido para compatibilidade
+        campaignIds?: string[]; // Nova propriedade para múltiplas campanhas
         dateRange: {
             start: Date | null;
             end: Date | null;
         };
     };
+}
+
+interface MetricTotals {
+    impressions: number;
+    clicks: number;
+    spend: number;
+    actions: any[];
+    cost_per_action_type: any[];
 }
 
 /**
@@ -85,8 +97,44 @@ export default function Relatorios() {
     const [showComparison, setShowComparison] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isExporting, setIsExporting] = useState(false);
 
     const { selectedBrand } = useBrand();
+
+    const handleExportPDF = useCallback(async () => {
+        if (!selectedBrand?.name) return;
+
+        try {
+            setIsExporting(true);
+            const element = document.getElementById('reports-canvas');
+            if (!element) return;
+
+            const canvas = await html2canvas(element, {
+                scale: 2,
+                useCORS: true,
+                logging: false
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm'
+            });
+
+            const imgProps = pdf.getImageProperties(imgData);
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save(`relatorio-${selectedBrand.name.toLowerCase()}-${format(new Date(), 'dd-MM-yyyy')}.pdf`);
+        } catch (err) {
+            console.error('Erro ao exportar PDF:', err);
+            setError('Erro ao gerar PDF');
+        } finally {
+            setIsExporting(false);
+        }
+    }, [selectedBrand?.name]);
+
     const insights = new FacebookInsightsService();
 
     // Estado para armazenar os dados da API
@@ -191,15 +239,111 @@ export default function Relatorios() {
     };
 
     /**
+     * Agrega dados de todas as campanhas
+     */
+    const aggregateOverviewMetrics = (data: InsightsOverview[] | null): InsightsOverview | null => {
+        if (!data?.length) return null;
+
+        // Primeiro soma todas as métricas básicas
+        const totals = data.reduce<MetricTotals>((acc, curr) => ({
+            impressions: acc.impressions + parseFloat(curr.impressions || '0'),
+            clicks: acc.clicks + parseFloat(curr.clicks || '0'),
+            spend: acc.spend + parseFloat(curr.spend || '0'),
+            actions: [...acc.actions, ...(curr.actions || [])],
+            cost_per_action_type: [...acc.cost_per_action_type, ...(curr.cost_per_action_type || [])]
+        }), {
+            impressions: 0,
+            clicks: 0,
+            spend: 0,
+            actions: [],
+            cost_per_action_type: []
+        });
+
+        // Depois calcula as taxas baseadas nos totais
+        const ctr = totals.clicks && totals.impressions ? (totals.clicks / totals.impressions) * 100 : 0;
+        const cpc = totals.clicks && totals.spend ? totals.spend / totals.clicks : 0;
+        const cpm = totals.impressions ? (totals.spend / totals.impressions) * 1000 : 0;
+
+        const aggregated: InsightsOverview = {
+            ...data[0], // Mantém outros campos necessários
+            impressions: totals.impressions.toString(),
+            clicks: totals.clicks.toString(),
+            spend: totals.spend.toString(),
+            ctr: ctr.toString(),
+            cpc: cpc.toString(),
+            cpm: cpm.toString(),
+            actions: totals.actions,
+            cost_per_action_type: totals.cost_per_action_type
+        };
+
+        return aggregated;
+    };
+
+    /**
+     * Agrega dados diários de todas as campanhas
+     */
+    const aggregateDailyMetrics = (data: InsightsDaily[] | null): InsightsDaily[] | null => {
+        if (!data?.length) return null;
+
+        const dailyTotals = new Map<string, {
+            impressions: number;
+            clicks: number;
+            spend: number;
+            date_start: string;
+            date_stop: string;
+        }>();
+
+        // Soma métricas por dia
+        data.forEach(item => {
+            const existing = dailyTotals.get(item.date_start) || {
+                impressions: 0,
+                clicks: 0,
+                spend: 0,
+                date_start: item.date_start,
+                date_stop: item.date_stop
+            };
+
+            dailyTotals.set(item.date_start, {
+                ...existing,
+                impressions: existing.impressions + parseFloat(item.impressions || '0'),
+                clicks: existing.clicks + parseFloat(item.clicks || '0'),
+                spend: existing.spend + parseFloat(item.spend || '0')
+            });
+        });
+
+        // Converte para array e calcula taxas
+        return Array.from(dailyTotals.values()).map(daily => {
+            const ctr = daily.clicks && daily.impressions ? (daily.clicks / daily.impressions) * 100 : 0;
+            const cpc = daily.clicks && daily.spend ? daily.spend / daily.clicks : 0;
+            const cpm = daily.impressions ? (daily.spend / daily.impressions) * 1000 : 0;
+
+            return {
+                ...data[0], // Mantém outros campos necessários
+                date_start: daily.date_start,
+                date_stop: daily.date_stop,
+                impressions: daily.impressions.toString(),
+                clicks: daily.clicks.toString(),
+                spend: daily.spend.toString(),
+                ctr: ctr.toString(),
+                cpc: cpc.toString(),
+                cpm: cpm.toString()
+            };
+        });
+    };
+
+    /**
      * Adapta os dados do insight para o formato esperado pelo ReportsCanvas
      */
     const adaptDataForCanvas = (): MockData => {
-        const overview = insightsData.overview?.[0];
-        const daily = insightsData.daily;
+        const overview = aggregateOverviewMetrics(insightsData.overview);
+        const daily = aggregateDailyMetrics(insightsData.daily);
         const demographics = insightsData.demographics;
 
-        console.log('Adaptando dados - Overview:', overview);
-        console.log('Adaptando dados - Daily:', daily);
+        console.log('Adaptando dados - Overview agregado:', overview);
+        console.log('Adaptando dados - Daily agregado:', daily);
+
+        // Preparar dados das campanhas individuais
+        const campaigns = insightsData.overview || [];
 
         // Dados básicos da conta
         const account: Account = {
@@ -228,7 +372,7 @@ export default function Relatorios() {
 
         return {
             accounts: [account],
-            campaigns: [],
+            campaigns: campaigns || [], // Inclui todas as campanhas dos insights
             since,
             until
         };
@@ -251,6 +395,13 @@ export default function Relatorios() {
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <h1 className="text-2xl font-semibold">Relatórios</h1>
+                                <Button
+                                    onClick={handleExportPDF}
+                                    variant="outline"
+                                    disabled={isExporting}
+                                >
+                                    {isExporting ? "Gerando PDF..." : "Exportar PDF"}
+                                </Button>
                             </div>
                             <DashboardFilters
                                 since={since}

@@ -36,25 +36,23 @@ export interface Account {
 }
 
 export interface Campaign {
-    id: string;
-    name: string;
-    accountId: string;
-    metrics: {
-        impressions: number;
-        clicks: number;
-        spend: number;
-        results: number;
-        ctr: number;
-        cpc: number;
-        cpa: number;
-        cpm: number;
-    };
+    account_id: string;
+    campaign_name: string;
+    impressions: string;
+    clicks: string;
+    spend: string;
+    ctr: string;
+    cpc: string;
+    cpm: string;
+    reach: string;
+    frequency: string;
     actions?: Action[];
-    demographics: {
-        age: Record<string, number>;
-        gender: Record<string, number>;
-        location: Record<string, number>;
-    };
+    cost_per_action_type?: Array<{
+        action_type: string;
+        value: string;
+    }>;
+    date_start: string;
+    date_stop: string;
 }
 
 export interface MockData {

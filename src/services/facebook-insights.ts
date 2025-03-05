@@ -1,11 +1,11 @@
 import api from '@/lib/api';
 
-interface Action {
+export interface Action {
     action_type: string;
     value: string;
 }
 
-interface CostPerActionType {
+export interface CostPerActionType {
     action_type: string;
     value: string;
 }
