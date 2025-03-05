@@ -1,14 +1,12 @@
 import { Widget } from "@/app/(authenticated)/relatorios/page";
 import { MockData } from "@/mock/reports-data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Settings, X } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/format";
-import { Chart as ChartJS, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend, TooltipItem, PointElement, LineElement } from 'chart.js';
-import { Pie, Bar, Line } from 'react-chartjs-2';
+import { Chart as ChartJS, ChartOptions, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend, PointElement, LineElement } from 'chart.js';
+import { Line } from 'react-chartjs-2';
 import { DropZone } from "@/components/DropZone";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend, PointElement, LineElement);
@@ -29,14 +27,6 @@ const COLORS = [
     'rgba(153, 102, 255, 0.8)',
 ];
 
-const BORDERS = [
-    'rgba(54, 162, 235, 1)',
-    'rgba(75, 192, 192, 1)',
-    'rgba(255, 206, 86, 1)',
-    'rgba(255, 99, 132, 1)',
-    'rgba(153, 102, 255, 1)',
-];
-
 function OverviewWidget({ widget, data }: { widget: Widget; data: MockData }) {
     const metrics = {
         impressions: { label: "Impressões", format: formatNumber },
@@ -46,26 +36,45 @@ function OverviewWidget({ widget, data }: { widget: Widget; data: MockData }) {
         ctr: { label: "CTR", format: formatPercent },
         cpc: { label: "CPC", format: formatCurrency },
         cpa: { label: "CPA", format: formatCurrency },
+        // Actions metrics
+        page_engagement: { label: "Engajamento da Página", format: formatNumber },
+        post_engagement: { label: "Engajamento do Post", format: formatNumber },
+        post_reaction: { label: "Reações", format: formatNumber },
+        link_click: { label: "Cliques no Link", format: formatNumber },
+        video_view: { label: "Visualizações de Vídeo", format: formatNumber },
+        comment: { label: "Comentários", format: formatNumber },
+        post: { label: "Posts", format: formatNumber },
+        onsite_conversion_post_save: { label: "Salvamentos", format: formatNumber },
+        onsite_conversion_messaging_conversation_started_7d: { label: "Conversas Iniciadas", format: formatNumber },
+        onsite_conversion_messaging_first_reply: { label: "Primeiras Respostas", format: formatNumber },
     };
 
     const items = widget.config.level === "account"
         ? data.accounts
         : widget.config.campaignId
-            ? data.campaigns.filter(c => c.id === widget.config.campaignId)
+            ? data.campaigns.filter(campaign => campaign.id === widget.config.campaignId)
             : data.campaigns;
+
     const aggregatedMetrics = items.reduce(
-        (acc, item) => {
+        (acc: Record<string, number>, item) => {
+            // Agregar métricas regulares
             Object.entries(item.metrics).forEach(([key, value]) => {
                 acc[key] = (acc[key] || 0) + value;
             });
+
+            // Agregar métricas de actions
+            item.actions?.forEach(action => {
+                acc[action.action_type] = (acc[action.action_type] || 0) + Number(action.value);
+            });
+
             return acc;
         },
-        {} as Record<string, number>
+        {}
     );
 
     return (
         <div className="grid grid-cols-4 gap-6">
-            {widget.config.metrics?.map((metricKey) => {
+            {widget.config.metrics?.map((metricKey: string) => {
                 const metric = metrics[metricKey as keyof typeof metrics];
                 if (!metric) return null;
 
@@ -82,73 +91,7 @@ function OverviewWidget({ widget, data }: { widget: Widget; data: MockData }) {
     );
 }
 
-function PieChartWidget({ widget, data }: { widget: Widget; data: MockData }) {
-    const items = widget.config.level === "account"
-        ? data.accounts
-        : widget.config.campaignId
-            ? data.campaigns.filter(c => c.id === widget.config.campaignId)
-            : data.campaigns;
-    const demographic = widget.config.demographic || "age";
-
-    const aggregatedData = items.reduce(
-        (acc, item) => {
-            Object.entries(item.demographics[demographic as keyof typeof item.demographics]).forEach(
-                ([key, value]) => {
-                    acc[key] = (acc[key] || 0) + value;
-                }
-            );
-            return acc;
-        },
-        {} as Record<string, number>
-    );
-
-    const labels = Object.keys(aggregatedData);
-    const values = Object.values(aggregatedData).map(value => value / items.length);
-
-    const chartData = {
-        labels,
-        datasets: [
-            {
-                data: values,
-                backgroundColor: COLORS,
-                borderColor: BORDERS,
-                borderWidth: 1,
-            },
-        ],
-    };
-
-    const options = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'right' as const,
-                labels: {
-                    padding: 20,
-                    font: {
-                        size: 12
-                    }
-                }
-            },
-            tooltip: {
-                callbacks: {
-                    label(tooltipItem: TooltipItem<"pie">) {
-                        const value = tooltipItem.raw as number;
-                        return `${tooltipItem.label}: ${value.toFixed(1)}%`;
-                    }
-                }
-            }
-        }
-    };
-
-    return (
-        <div className="h-[400px] w-full p-4">
-            <Pie data={chartData} options={options} />
-        </div>
-    );
-}
-
-function LineChartWidget({ widget }: { widget: Widget }) {
+function LineChartWidget({ widget, data }: { widget: Widget; data: MockData }) {
     const metrics = {
         impressions: { label: "Impressões", format: formatNumber },
         clicks: { label: "Cliques", format: formatNumber },
@@ -157,22 +100,38 @@ function LineChartWidget({ widget }: { widget: Widget }) {
         ctr: { label: "CTR", format: formatPercent },
         cpc: { label: "CPC", format: formatCurrency },
         cpa: { label: "CPA", format: formatCurrency },
+        // Actions metrics
+        page_engagement: { label: "Engajamento da Página", format: formatNumber },
+        post_engagement: { label: "Engajamento do Post", format: formatNumber },
+        post_reaction: { label: "Reações", format: formatNumber },
+        link_click: { label: "Cliques no Link", format: formatNumber },
+        video_view: { label: "Visualizações de Vídeo", format: formatNumber },
+        comment: { label: "Comentários", format: formatNumber },
+        post: { label: "Posts", format: formatNumber },
+        onsite_conversion_post_save: { label: "Salvamentos", format: formatNumber },
+        onsite_conversion_messaging_conversation_started_7d: { label: "Conversas Iniciadas", format: formatNumber },
+        onsite_conversion_messaging_first_reply: { label: "Primeiras Respostas", format: formatNumber },
     };
 
+    const account = data.accounts[0];
+    if (!account?.daily) {
+        console.log('Sem dados diários disponíveis para o gráfico de linha');
+        return (
+            <div className="h-[400px] w-full p-4 flex items-center justify-center">
+                <p className="text-muted-foreground">Sem dados disponíveis</p>
+            </div>
+        );
+    }
+
+    console.log('Dados diários para o gráfico:', account.daily);
+
     const chartData = {
-        labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
-        datasets: widget.config.metrics?.map((metricKey, index) => {
+        labels: account.daily.dates,
+        datasets: widget.config.metrics?.map((metricKey: string, index: number) => {
             const metric = metrics[metricKey as keyof typeof metrics];
             return {
                 label: metric?.label || metricKey,
-                data: [
-                    Math.random() * 1000,
-                    Math.random() * 1000,
-                    Math.random() * 1000,
-                    Math.random() * 1000,
-                    Math.random() * 1000,
-                    Math.random() * 1000,
-                ],
+                data: account.daily.metrics[metricKey as keyof typeof account.daily.metrics] || [],
                 borderColor: COLORS[index % COLORS.length],
                 backgroundColor: COLORS[index % COLORS.length],
                 tension: 0.4,
@@ -180,19 +139,19 @@ function LineChartWidget({ widget }: { widget: Widget }) {
         }) || [],
     };
 
-    const options = {
+    const options: ChartOptions<'line'> = {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
             legend: {
-                position: 'top' as const,
+                position: 'top',
             },
             tooltip: {
                 callbacks: {
-                    label(tooltipItem: TooltipItem<"line">) {
-                        const value = tooltipItem.raw as number;
-                        const metric = metrics[widget.config.metrics?.[tooltipItem.datasetIndex || 0] as keyof typeof metrics];
-                        return metric ? `${tooltipItem.dataset.label}: ${metric.format(value)}` : tooltipItem.dataset.label || '';
+                    label(context) {
+                        const value = context.raw as number;
+                        const metric = metrics[widget.config.metrics?.[context.datasetIndex || 0] as keyof typeof metrics];
+                        return metric ? `${context.dataset.label}: ${metric.format(value)}` : context.dataset.label || '';
                     }
                 }
             }
@@ -200,6 +159,14 @@ function LineChartWidget({ widget }: { widget: Widget }) {
         scales: {
             y: {
                 beginAtZero: true,
+                ticks: {
+                    callback(value) {
+                        const firstMetric = widget.config.metrics?.[0];
+                        if (!firstMetric) return value;
+                        const metric = metrics[firstMetric as keyof typeof metrics];
+                        return metric ? metric.format(Number(value)) : value;
+                    }
+                }
             },
         },
     };
@@ -207,140 +174,6 @@ function LineChartWidget({ widget }: { widget: Widget }) {
     return (
         <div className="h-[400px] w-full p-4">
             <Line data={chartData} options={options} />
-        </div>
-    );
-}
-
-function BarChartWidget({ widget, data }: { widget: Widget; data: MockData }) {
-    const metrics = {
-        impressions: { label: "Impressões", format: formatNumber },
-        clicks: { label: "Cliques", format: formatNumber },
-        spend: { label: "Gasto", format: formatCurrency },
-        results: { label: "Resultados", format: formatNumber },
-        ctr: { label: "CTR", format: formatPercent },
-        cpc: { label: "CPC", format: formatCurrency },
-        cpa: { label: "CPA", format: formatCurrency },
-    };
-
-    const items = widget.config.level === "account"
-        ? data.accounts
-        : widget.config.campaignId
-            ? data.campaigns.filter(c => c.id === widget.config.campaignId)
-            : data.campaigns;
-
-    const chartData = {
-        labels: items.map(item => item.name),
-        datasets: widget.config.metrics?.map((metricKey, index) => {
-            const metric = metrics[metricKey as keyof typeof metrics];
-            return {
-                label: metric?.label || metricKey,
-                data: items.map(item => item.metrics[metricKey as keyof typeof item.metrics]),
-                backgroundColor: COLORS[index % COLORS.length],
-                borderColor: BORDERS[index % BORDERS.length],
-                borderWidth: 1,
-            };
-        }) || [],
-    };
-
-    const options = {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'top' as const,
-            },
-            tooltip: {
-                callbacks: {
-                    label(tooltipItem: TooltipItem<"bar">) {
-                        const value = tooltipItem.raw as number;
-                        const metric = metrics[widget.config.metrics?.[tooltipItem.datasetIndex || 0] as keyof typeof metrics];
-                        return metric ? `${tooltipItem.dataset.label}: ${metric.format(value)}` : tooltipItem.dataset.label || '';
-                    }
-                }
-            }
-        },
-        scales: {
-            y: {
-                beginAtZero: true,
-            },
-        },
-    };
-
-    return (
-        <div className="h-[400px] w-full p-4">
-            <Bar data={chartData} options={options} />
-        </div>
-    );
-}
-
-function FunnelWidget({ widget, data }: { widget: Widget; data: MockData }) {
-    const metrics = {
-        impressions: { label: "Impressões", format: formatNumber },
-        clicks: { label: "Cliques", format: formatNumber },
-        spend: { label: "Gasto", format: formatCurrency },
-        results: { label: "Resultados", format: formatNumber },
-        ctr: { label: "CTR", format: formatPercent },
-        cpc: { label: "CPC", format: formatCurrency },
-        cpa: { label: "CPA", format: formatCurrency },
-    };
-
-    const items = widget.config.level === "account"
-        ? data.accounts
-        : widget.config.campaignId
-            ? data.campaigns.filter(c => c.id === widget.config.campaignId)
-            : data.campaigns;
-    const aggregatedMetrics = items.reduce(
-        (acc, item) => {
-            Object.entries(item.metrics).forEach(([key, value]) => {
-                acc[key] = (acc[key] || 0) + value;
-            });
-            return acc;
-        },
-        {} as Record<string, number>
-    );
-
-    const funnelMetrics = widget.config.funnelMetrics || [];
-    const chartData = {
-        labels: funnelMetrics.map(key => metrics[key as keyof typeof metrics]?.label || key),
-        datasets: [
-            {
-                data: funnelMetrics.map(key => aggregatedMetrics[key] || 0),
-                backgroundColor: COLORS,
-                borderColor: BORDERS,
-                borderWidth: 1,
-            },
-        ],
-    };
-
-    const options = {
-        responsive: true,
-        maintainAspectRatio: false,
-        indexAxis: 'y' as const,
-        scales: {
-            x: {
-                beginAtZero: true,
-            },
-        },
-        plugins: {
-            legend: {
-                display: false,
-            },
-            tooltip: {
-                callbacks: {
-                    label(tooltipItem: TooltipItem<"bar">) {
-                        const value = tooltipItem.raw as number;
-                        const metricKey = funnelMetrics[tooltipItem.dataIndex];
-                        const metric = metrics[metricKey as keyof typeof metrics];
-                        return metric ? metric.format(value) : value.toString();
-                    }
-                }
-            }
-        }
-    };
-
-    return (
-        <div className="h-[400px] w-full p-4">
-            <Bar data={chartData} options={options} />
         </div>
     );
 }
@@ -357,12 +190,12 @@ function WidgetCard({
     onRemove: () => void;
 }) {
     const [isHovered, setIsHovered] = useState(false);
-
     const containerClass = widget.type === "overview"
         ? "relative p-4 rounded-lg border bg-card col-span-3"
         : "relative p-4 rounded-lg border bg-card col-span-2 row-span-2";
 
     const metrics = {
+        // Métricas básicas
         impressions: "Impressões",
         clicks: "Cliques",
         spend: "Gasto",
@@ -370,6 +203,17 @@ function WidgetCard({
         ctr: "CTR",
         cpc: "CPC",
         cpa: "CPA",
+        // Métricas de actions
+        page_engagement: "Engajamento da Página",
+        post_engagement: "Engajamento do Post",
+        post_reaction: "Reações",
+        link_click: "Cliques no Link",
+        video_view: "Visualizações de Vídeo",
+        comment: "Comentários",
+        post: "Posts",
+        onsite_conversion_post_save: "Salvamentos",
+        onsite_conversion_messaging_conversation_started_7d: "Conversas Iniciadas",
+        onsite_conversion_messaging_first_reply: "Primeiras Respostas",
     };
 
     return (
@@ -402,166 +246,37 @@ function WidgetCard({
                                         className="w-full px-3 py-2 border rounded-md"
                                     />
                                 </div>
-
                                 <div className="space-y-2">
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium">Nível</label>
-                                            <Select
-                                                value={widget.config.level}
-                                                onValueChange={(value) =>
-                                                    onUpdate({
-                                                        config: {
-                                                            ...widget.config,
-                                                            level: value as "account" | "campaign",
-                                                            campaignId: value === "account" ? undefined : widget.config.campaignId,
-                                                        }
-                                                    })
-                                                }
-                                            >
-                                                <SelectTrigger>
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="account">Conta</SelectItem>
-                                                    <SelectItem value="campaign">Campanha</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-
-                                        {widget.config.level === "campaign" && (
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium">Campanha</label>
-                                                <Select
-                                                    value={widget.config.campaignId}
-                                                    onValueChange={(value) =>
+                                    <label className="text-sm font-medium">Métricas</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {Object.entries(metrics).map(([key, label]) => {
+                                            const isSelected = widget.config.metrics?.includes(key);
+                                            return (
+                                                <button
+                                                    key={key}
+                                                    onClick={() => {
+                                                        const currentMetrics = widget.config.metrics || [];
+                                                        const newMetrics = isSelected
+                                                            ? currentMetrics.filter((m: string) => m !== key)
+                                                            : [...currentMetrics, key];
                                                         onUpdate({
                                                             config: {
                                                                 ...widget.config,
-                                                                campaignId: value,
+                                                                metrics: newMetrics
                                                             }
-                                                        })
-                                                    }
+                                                        });
+                                                    }}
+                                                    className={`px-3 py-1 rounded-full text-sm transition-colors ${isSelected
+                                                        ? "bg-primary text-primary-foreground"
+                                                        : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                                                        }`}
                                                 >
-                                                    <SelectTrigger>
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {data.campaigns.map((campaign) => (
-                                                            <SelectItem key={campaign.id} value={campaign.id}>
-                                                                {campaign.name}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        )}
+                                                    {label}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
-
-                                {widget.type === "overview" && (
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium">Métricas</label>
-                                        <ScrollArea className="h-[200px] rounded-md border p-4">
-                                            <div className="flex flex-wrap gap-2">
-                                                {Object.entries(metrics).map(([key, label]) => {
-                                                    const isSelected = widget.config.metrics?.includes(key);
-                                                    return (
-                                                        <button
-                                                            key={key}
-                                                            onClick={() => {
-                                                                const metrics = widget.config.metrics || [];
-                                                                const newMetrics = isSelected
-                                                                    ? metrics.filter((m) => m !== key)
-                                                                    : [...metrics, key];
-                                                                onUpdate({
-                                                                    config: {
-                                                                        ...widget.config,
-                                                                        metrics: newMetrics,
-                                                                    }
-                                                                });
-                                                            }}
-                                                            className={`px-3 py-1 rounded-full text-sm transition-colors ${isSelected
-                                                                ? "bg-primary text-primary-foreground"
-                                                                : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                                                                }`}
-                                                        >
-                                                            {label}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </ScrollArea>
-                                    </div>
-                                )}
-
-                                {widget.type === "pieChart" && (
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium">Dado Demográfico</label>
-                                        <Select
-                                            value={widget.config.demographic}
-                                            onValueChange={(value) =>
-                                                onUpdate({
-                                                    config: {
-                                                        ...widget.config,
-                                                        demographic: value,
-                                                    }
-                                                })
-                                            }
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="age">Idade</SelectItem>
-                                                <SelectItem value="gender">Gênero</SelectItem>
-                                                <SelectItem value="location">Localização</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                )}
-
-                                {widget.type === "funnel" && (
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium">Métricas do Funil (máx. 3)</label>
-                                        <ScrollArea className="h-[200px] rounded-md border p-4">
-                                            <div className="space-y-2">
-                                                {Object.entries(metrics).map(([key, label]) => (
-                                                    <div
-                                                        key={key}
-                                                        className="flex items-center space-x-2"
-                                                    >
-                                                        <input
-                                                            type="checkbox"
-                                                            id={`funnel-${key}`}
-                                                            checked={widget.config.funnelMetrics?.includes(
-                                                                key
-                                                            )}
-                                                            disabled={
-                                                                !widget.config.funnelMetrics?.includes(key) &&
-                                                                (widget.config.funnelMetrics?.length || 0) >= 3
-                                                            }
-                                                            onChange={(e) => {
-                                                                const funnelMetrics =
-                                                                    widget.config.funnelMetrics || [];
-                                                                const newMetrics = e.target.checked
-                                                                    ? [...funnelMetrics, key]
-                                                                    : funnelMetrics.filter((m) => m !== key);
-                                                                onUpdate({
-                                                                    config: {
-                                                                        ...widget.config,
-                                                                        funnelMetrics: newMetrics,
-                                                                    }
-                                                                });
-                                                            }}
-                                                        />
-                                                        <label htmlFor={`funnel-${key}`}>{label}</label>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </ScrollArea>
-                                    </div>
-                                )}
                             </div>
                         </DialogContent>
                     </Dialog>
@@ -573,10 +288,7 @@ function WidgetCard({
             )}
 
             {widget.type === "overview" && <OverviewWidget widget={widget} data={data} />}
-            {widget.type === "pieChart" && <PieChartWidget widget={widget} data={data} />}
-            {widget.type === "funnel" && <FunnelWidget widget={widget} data={data} />}
-            {widget.type === "lineChart" && <LineChartWidget widget={widget} />}
-            {widget.type === "barChart" && <BarChartWidget widget={widget} data={data} />}
+            {widget.type === "lineChart" && <LineChartWidget widget={widget} data={data} />}
         </div>
     );
 }
@@ -588,7 +300,6 @@ export function ReportsCanvas({
     onAddWidget,
     data,
 }: ReportsCanvasProps) {
-    // Ordena os widgets por posição y
     const sortedWidgets = [...widgets].sort((a, b) => a.position.y - b.position.y);
 
     return (
