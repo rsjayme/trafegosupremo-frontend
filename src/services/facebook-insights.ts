@@ -27,13 +27,20 @@ interface BaseInsight {
     date_stop: string;
 }
 
-// Adicionando tipos específicos para cada endpoint, com campos adicionais específicos
 export interface InsightsDemographics extends BaseInsight {
     age: string;
     gender: string;
 }
 
-// Usando type ao invés de interface para evitar avisos de interface vazia
+export interface InsightsDevices extends BaseInsight {
+    device_platform: string;
+}
+
+export interface InsightsLocations extends BaseInsight {
+    country: string;
+    region: string;
+}
+
 export type InsightsOverview = BaseInsight;
 export type InsightsDaily = BaseInsight;
 
@@ -51,13 +58,7 @@ interface TimelineData {
     metrics: TimelineMetrics;
 }
 
-/**
- * Serviço para acessar dados de insights do Facebook
- */
 export class FacebookInsightsService {
-    /**
-     * Busca dados gerais de insights
-     */
     async getOverview(brandId: string, since?: string, until?: string) {
         const params = new URLSearchParams();
         if (since) params.append('since', since.split('T')[0]);
@@ -71,9 +72,6 @@ export class FacebookInsightsService {
         return response.data;
     }
 
-    /**
-     * Busca dados diários de insights
-     */
     async getDaily(brandId: string, since?: string, until?: string) {
         const params = new URLSearchParams();
         if (since) params.append('since', since.split('T')[0]);
@@ -87,9 +85,6 @@ export class FacebookInsightsService {
         return response.data;
     }
 
-    /**
-     * Busca dados demográficos de insights
-     */
     async getDemographics(brandId: string, since?: string, until?: string) {
         const params = new URLSearchParams();
         if (since) params.append('since', since.split('T')[0]);
@@ -103,9 +98,32 @@ export class FacebookInsightsService {
         return response.data;
     }
 
-    /**
-     * Converte string para número de forma segura
-     */
+    async getDevices(brandId: string, since?: string, until?: string) {
+        const params = new URLSearchParams();
+        if (since) params.append('since', since.split('T')[0]);
+        if (until) params.append('until', until.split('T')[0]);
+
+        const url = `/facebook/insights/${brandId}/devices?${params.toString()}`;
+        console.log('URL do devices:', url);
+
+        const response = await api.get<InsightsDevices[]>(url);
+        console.log('Dados brutos do devices:', JSON.stringify(response.data, null, 2));
+        return response.data;
+    }
+
+    async getLocations(brandId: string, since?: string, until?: string) {
+        const params = new URLSearchParams();
+        if (since) params.append('since', since.split('T')[0]);
+        if (until) params.append('until', until.split('T')[0]);
+
+        const url = `/facebook/insights/${brandId}/locations?${params.toString()}`;
+        console.log('URL do locations:', url);
+
+        const response = await api.get<InsightsLocations[]>(url);
+        console.log('Dados brutos do locations:', JSON.stringify(response.data, null, 2));
+        return response.data;
+    }
+
     formatValue(value: string | undefined | null): number {
         if (value === undefined || value === null) {
             console.log('Valor indefinido ou nulo:', value);
@@ -120,33 +138,32 @@ export class FacebookInsightsService {
         return num;
     }
 
-    /**
-     * Calcula a porcentagem entre dois valores
-     */
-    calculatePercentage(value: string, total: string): number {
-        const valueNum = this.formatValue(value);
-        const totalNum = this.formatValue(total);
-        return totalNum === 0 ? 0 : (valueNum / totalNum) * 100;
+    getMetricValue(item: BaseInsight, metric: string): number {
+        switch (metric) {
+            case 'impressions':
+                return this.formatValue(item.impressions);
+            case 'clicks':
+                return this.formatValue(item.clicks);
+            case 'spend':
+                return this.formatValue(item.spend);
+            case 'reach':
+                return this.formatValue(item.reach);
+            default:
+                return this.formatValue(item.impressions);
+        }
     }
 
-    /**
-     * Agrupa dados por idade
-     */
-    groupByAge(data: InsightsDemographics[]): Record<string, number> {
-        console.log('Analisando dados demográficos (idade):', JSON.stringify(data, null, 2));
+    groupByAge(data: InsightsDemographics[], metric: string = 'impressions'): Record<string, number> {
+        console.log(`Analisando dados demográficos (idade) para métrica ${metric}:`, data);
         const ageGroups: Record<string, number> = {};
 
         data.forEach(item => {
-            console.log('Processando item de idade:', item);
-            if (item?.impressions) {
-                const impressions = this.formatValue(item.impressions);
-                console.log(`Idade ${item.age}, impressões:`, impressions);
-                if (item.age) {
-                    if (ageGroups[item.age]) {
-                        ageGroups[item.age] += impressions;
-                    } else {
-                        ageGroups[item.age] = impressions;
-                    }
+            if (item.age) {
+                const value = this.getMetricValue(item, metric);
+                if (ageGroups[item.age]) {
+                    ageGroups[item.age] += value;
+                } else {
+                    ageGroups[item.age] = value;
                 }
             }
         });
@@ -155,24 +172,55 @@ export class FacebookInsightsService {
         return ageGroups;
     }
 
-    /**
-     * Agrupa dados por gênero
-     */
-    groupByGender(data: InsightsDemographics[]): Record<string, number> {
-        console.log('Analisando dados demográficos (gênero):', JSON.stringify(data, null, 2));
+    groupByDevice(data: InsightsDevices[], metric: string = 'impressions'): Record<string, number> {
+        console.log(`Analisando dados de dispositivos para métrica ${metric}:`, data);
+        const deviceGroups: Record<string, number> = {};
+
+        data.forEach(item => {
+            if (item.device_platform) {
+                const value = this.getMetricValue(item, metric);
+                if (deviceGroups[item.device_platform]) {
+                    deviceGroups[item.device_platform] += value;
+                } else {
+                    deviceGroups[item.device_platform] = value;
+                }
+            }
+        });
+
+        console.log('Grupos por dispositivo finalizados:', deviceGroups);
+        return deviceGroups;
+    }
+
+    groupByRegion(data: InsightsLocations[], metric: string = 'impressions'): Record<string, number> {
+        console.log(`Analisando dados de localização para métrica ${metric}:`, data);
+        const regionGroups: Record<string, number> = {};
+
+        data.forEach(item => {
+            if (item.region) {
+                const value = this.getMetricValue(item, metric);
+                if (regionGroups[item.region]) {
+                    regionGroups[item.region] += value;
+                } else {
+                    regionGroups[item.region] = value;
+                }
+            }
+        });
+
+        console.log('Grupos por região finalizados:', regionGroups);
+        return regionGroups;
+    }
+
+    groupByGender(data: InsightsDemographics[], metric: string = 'impressions'): Record<string, number> {
+        console.log(`Analisando dados demográficos (gênero) para métrica ${metric}:`, data);
         const genderGroups: Record<string, number> = {};
 
         data.forEach(item => {
-            console.log('Processando item de gênero:', item);
-            if (item?.impressions) {
-                const impressions = this.formatValue(item.impressions);
-                console.log(`Gênero ${item.gender}, impressões:`, impressions);
-                if (item.gender) {
-                    if (genderGroups[item.gender]) {
-                        genderGroups[item.gender] += impressions;
-                    } else {
-                        genderGroups[item.gender] = impressions;
-                    }
+            if (item.gender) {
+                const value = this.getMetricValue(item, metric);
+                if (genderGroups[item.gender]) {
+                    genderGroups[item.gender] += value;
+                } else {
+                    genderGroups[item.gender] = value;
                 }
             }
         });
@@ -181,9 +229,6 @@ export class FacebookInsightsService {
         return genderGroups;
     }
 
-    /**
-     * Formata dados para série temporal
-     */
     formatTimelineData(data: InsightsDaily[]): TimelineData {
         console.log('Formatando dados de timeline:', JSON.stringify(data, null, 2));
 

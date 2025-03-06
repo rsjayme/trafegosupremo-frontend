@@ -71,6 +71,8 @@ export interface Widget {
         funnelMetrics?: string[];
         campaignId?: string; // Mantido para compatibilidade
         campaignIds?: string[]; // Nova propriedade para múltiplas campanhas
+        breakdown?: "demographics" | "devices" | "locations";
+        metric?: string;
         dateRange: {
             start: Date | null;
             end: Date | null;

@@ -39,11 +39,12 @@ const widgetTemplates: WidgetTemplate[] = [
         icon: <PieChart className="w-5 h-5" />,
         defaultConfig: {
             type: "pieChart",
-            title: "Gráfico Demográfico",
+            title: "Distribuição",
             size: { width: 2, height: 2 },
             config: {
                 level: "account",
-                demographic: "age",
+                breakdown: "demographics", // Tipo de breakdown: demographics, devices, locations
+                metric: "impressions", // Métrica principal
                 dateRange: {
                     start: null,
                     end: null,
