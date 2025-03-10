@@ -112,7 +112,7 @@ const allCampaigns: Campaign[] = [
     },
 ];
 
-export function CustomReport({ metrics, dateRange, status }: CustomReportProps) {
+export function CustomReport({ metrics, status }: CustomReportProps) {
     // Filtra as campanhas com base no status
     const filteredCampaigns = allCampaigns.filter((campaign) => {
         if (status && status !== "all" && campaign.status !== status) {
@@ -241,8 +241,8 @@ export function CustomReport({ metrics, dateRange, status }: CustomReportProps) 
                                     <TableCell>
                                         <span
                                             className={`px-2 py-1 rounded-full text-xs font-medium ${campaign.status === "Ativa"
-                                                    ? "bg-green-100 text-green-700"
-                                                    : "bg-yellow-100 text-yellow-700"
+                                                ? "bg-green-100 text-green-700"
+                                                : "bg-yellow-100 text-yellow-700"
                                                 }`}
                                         >
                                             {campaign.status}

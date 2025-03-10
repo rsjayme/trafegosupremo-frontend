@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { CalendarIcon } from "lucide-react"
-import { DayPicker, SelectRangeEventHandler } from "react-day-picker"
+import { SelectRangeEventHandler } from "react-day-picker"
 
 export interface DateRangePickerProps {
     date: { from: Date | undefined; to: Date | undefined }

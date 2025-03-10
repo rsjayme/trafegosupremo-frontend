@@ -136,6 +136,7 @@ function DraggableWidget({ template }: { template: WidgetTemplate }) {
     );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function ReportsSidebar({ onAddWidget }: ReportsSidebarProps) {
     return (
         <div className="w-64 border-r bg-card p-4">

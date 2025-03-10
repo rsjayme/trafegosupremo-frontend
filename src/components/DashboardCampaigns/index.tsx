@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
-import { ActionSelector } from "@/components/ActionSelector";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { type FacebookCampaignMetrics, type DashboardFilters } from "@/types/dashboard";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,6 +18,7 @@ interface DashboardCampaignsProps {
 
 export function DashboardCampaigns({ brandId, since, until }: DashboardCampaignsProps) {
     const { selectedAccount } = useAccount();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [globalActions, setGlobalActions] = useState<string[]>(() =>
         loadGlobalActions()
     );

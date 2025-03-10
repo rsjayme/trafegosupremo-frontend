@@ -93,6 +93,7 @@ export function AIAnalysisWidget({
             setError(null);
             setProgress(0);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, brandId, campaignId, period.since, period.until]);
 
     return (

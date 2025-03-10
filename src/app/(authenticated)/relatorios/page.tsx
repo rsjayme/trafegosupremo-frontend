@@ -197,6 +197,7 @@ export default function Relatorios() {
         };
 
         loadInsights();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedBrand?.id, since, until]);
 
     const handleDateChange = (newSince: Date, newUntil: Date) => {

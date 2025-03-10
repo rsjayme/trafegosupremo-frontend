@@ -81,6 +81,7 @@ const PieChartWidget = ({ widget, data }: PieChartProps) => {
 
     useEffect(() => {
         fetchData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data.accounts[0]?.id, data.since, data.until, widget.config.breakdown, widget.config.metric]);
 
     interface PieLabel {
