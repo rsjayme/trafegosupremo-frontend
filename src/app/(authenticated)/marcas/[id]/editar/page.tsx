@@ -1,11 +1,7 @@
 import { EditBrandPage } from "@/components/brands/EditBrandPage";
 
-interface PageProps {
-    eita: {
-        id: string;
-    };
-}
 
-export default function EditarMarca({ eita }: PageProps) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default function EditarMarca({ eita }: any) {
     return <EditBrandPage brandId={eita.id} />;
 }
