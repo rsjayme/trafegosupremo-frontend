@@ -9,7 +9,8 @@ import {
     House,
     Megaphone,
     Gear,
-    Buildings
+    Buildings,
+    Bell
 } from "@phosphor-icons/react";
 
 const menuItems = [
@@ -32,6 +33,11 @@ const menuItems = [
         label: "Marcas",
         icon: Buildings,
         href: "/marcas",
+    },
+    {
+        label: "Alertas de Orçamento",
+        icon: Bell,
+        href: "/alertas",
     },
     {
         label: "Configurações",

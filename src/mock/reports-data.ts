@@ -1,3 +1,6 @@
+import { TimelineData } from '@/types/timeline';
+import { InsightsDaily } from '@/services/facebook-insights';
+
 interface Action {
     action_type: string;
     value: string | number;
@@ -22,17 +25,7 @@ export interface Account {
         gender: Record<string, number>;
         location: Record<string, number>;
     };
-    daily: {
-        dates: string[];
-        metrics: {
-            impressions: number[];
-            clicks: number[];
-            spend: number[];
-            ctr: number[];
-            cpc: number[];
-            cpm: number[];
-        };
-    };
+    daily: TimelineData;
 }
 
 export interface Campaign {
@@ -58,6 +51,7 @@ export interface Campaign {
 export interface MockData {
     accounts: Account[];
     campaigns: Campaign[];
+    daily?: InsightsDaily[];
     since: string;
     until: string;
 }
@@ -105,7 +99,18 @@ export const mockData: MockData = {
                     spend: [],
                     ctr: [],
                     cpc: [],
-                    cpm: []
+                    cpm: [],
+                    onsite_conversion_messaging_conversation_started_7d: [],
+                    onsite_conversion_messaging_first_reply: [],
+                    onsite_conversion_messaging_user_depth_2_message_send: [],
+                    onsite_conversion_messaging_user_depth_3_message_send: [],
+                    onsite_conversion_total_messaging_connection: [],
+                    page_engagement: [],
+                    post_engagement: [],
+                    post_reaction: [],
+                    comment: [],
+                    link_click: [],
+                    video_view: []
                 }
             }
         }

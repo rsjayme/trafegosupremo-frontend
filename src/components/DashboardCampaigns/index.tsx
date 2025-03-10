@@ -116,6 +116,8 @@ export function DashboardCampaigns({ brandId, since, until }: DashboardCampaigns
                             globalActions={globalActions}
                             campaignActions={campaignActions}
                             onCampaignActionChange={handleCampaignActionChange}
+                            since={since}
+                            until={until}
                         />
                     ))}
                 </div>

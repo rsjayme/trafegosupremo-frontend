@@ -83,8 +83,43 @@ const PieChartWidget = ({ widget, data }: PieChartProps) => {
         fetchData();
     }, [data.accounts[0]?.id, data.since, data.until, widget.config.breakdown, widget.config.metric]);
 
-    const renderCustomLabel = ({ name, percent }: { name: string; percent: number }) => {
-        return `${name}: ${(percent * 100).toFixed(1)}%`;
+    interface PieLabel {
+        cx: number;
+        cy: number;
+        percent: number;
+        innerRadius: number;
+        outerRadius: number;
+        midAngle: number;
+        name: string;
+        value: number;
+    }
+
+    const renderOuterLabel = ({ value }: PieLabel) => {
+        return value.toLocaleString();
+    };
+
+    const renderInnerLabel = ({ percent, cx, cy, innerRadius, outerRadius, midAngle }: PieLabel) => {
+        const RADIAN = Math.PI / 180;
+        const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+        const x = cx + radius * Math.cos(-midAngle * RADIAN);
+        const y = cy + radius * Math.sin(-midAngle * RADIAN);
+        const percentValue = (percent * 100);
+
+        // Não mostrar porcentagem se o segmento for menor que 5%
+        if (percentValue < 5) return null;
+
+        return (
+            <text
+                x={x}
+                y={y}
+                fill="white"
+                textAnchor="middle"
+                dominantBaseline="central"
+                style={{ fontSize: '12px', fontWeight: 'bold' }}
+            >
+                {`${percentValue.toFixed(1)}%`}
+            </text>
+        );
     };
 
     if (error) {
@@ -99,77 +134,58 @@ const PieChartWidget = ({ widget, data }: PieChartProps) => {
 
     return (
         <Card>
-            <CardContent className="h-[500px] p-8">
+            <CardContent className="h-[500px] p-4">
                 {loading ? (
                     <div className="h-full flex items-center justify-center">
                         Carregando...
                     </div>
                 ) : (
                     <ResponsiveContainer width="100%" height="100%">
-                        <PieChart margin={{ top: 40, right: 80, bottom: 20, left: 80 }}>
+                        <PieChart>
                             <Pie
                                 data={chartData}
                                 cx="50%"
                                 cy="50%"
-                                labelLine={{
-                                    stroke: 'rgba(156, 163, 175, 0.5)',
-                                    strokeWidth: 1,
-                                    strokeDasharray: '3',
-                                }}
-                                label={(props) => {
-                                    const RADIAN = Math.PI / 180;
-                                    const radius = 100 + 80;
-                                    const x = props.cx + radius * Math.cos(-props.midAngle * RADIAN);
-                                    const y = props.cy + radius * Math.sin(-props.midAngle * RADIAN);
-
-                                    return (
-                                        <text
-                                            x={x}
-                                            y={y}
-                                            className="fill-muted-foreground text-sm font-medium"
-                                            textAnchor={x > props.cx ? 'start' : 'end'}
-                                            dominantBaseline="central"
-                                        >
-                                            {renderCustomLabel(props)}
-                                        </text>
-                                    );
-                                }}
+                                label={renderOuterLabel}
+                                labelLine={true}
                                 innerRadius={60}
-                                outerRadius={100}
+                                outerRadius={120}
                                 fill="#8884d8"
                                 dataKey="value"
-                                animationBegin={0}
-                                animationDuration={1000}
-                                animationEasing="ease-out"
                             >
                                 {chartData.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                 ))}
                             </Pie>
+                            <Pie
+                                data={chartData}
+                                cx="50%"
+                                cy="50%"
+                                label={renderInnerLabel}
+                                labelLine={false}
+                                innerRadius={60}
+                                outerRadius={120}
+                                fill="transparent"
+                                dataKey="value"
+                                isAnimationActive={false}
+                                activeIndex={[]}
+                            />
                             <Tooltip
-                                wrapperStyle={{ zIndex: 100 }}
-                                contentStyle={{
-                                    backgroundColor: 'hsl(var(--card))',
-                                    border: '1px solid hsl(var(--border))',
-                                    borderRadius: 'calc(var(--radius) - 2px)',
-                                    padding: '12px',
-                                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                                    fontSize: '14px'
-                                }}
-                                formatter={(value: number) => [`${value.toLocaleString()}`, '']}
+                                formatter={(value: number, name: string) => [value.toLocaleString(), name]}
                             />
                             <Legend
                                 layout="horizontal"
                                 verticalAlign="bottom"
                                 align="center"
+                                payload={chartData.map((entry, index) => ({
+                                    value: entry.name,
+                                    type: 'square',
+                                    color: COLORS[index % COLORS.length]
+                                }))}
                                 wrapperStyle={{
-                                    paddingTop: '30px'
+                                    paddingTop: '20px',
+                                    marginBottom: '-20px'
                                 }}
-                                formatter={(value) => (
-                                    <span className="text-sm font-medium text-muted-foreground">
-                                        {value}
-                                    </span>
-                                )}
                             />
                         </PieChart>
                     </ResponsiveContainer>

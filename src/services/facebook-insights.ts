@@ -44,19 +44,7 @@ export interface InsightsLocations extends BaseInsight {
 export type InsightsOverview = BaseInsight;
 export type InsightsDaily = BaseInsight;
 
-interface TimelineMetrics {
-    impressions: number[];
-    clicks: number[];
-    spend: number[];
-    ctr: number[];
-    cpc: number[];
-    cpm: number[];
-}
-
-interface TimelineData {
-    dates: string[];
-    metrics: TimelineMetrics;
-}
+import { TimelineData } from '@/types/timeline';
 
 export class FacebookInsightsService {
     async getOverview(brandId: string, since?: string, until?: string) {
@@ -139,6 +127,7 @@ export class FacebookInsightsService {
     }
 
     getMetricValue(item: BaseInsight, metric: string): number {
+        // Métricas básicas
         switch (metric) {
             case 'impressions':
                 return this.formatValue(item.impressions);
@@ -148,9 +137,26 @@ export class FacebookInsightsService {
                 return this.formatValue(item.spend);
             case 'reach':
                 return this.formatValue(item.reach);
-            default:
-                return this.formatValue(item.impressions);
+            case 'ctr':
+                return this.formatValue(item.ctr);
+            case 'cpc':
+                return this.formatValue(item.cpc);
+            case 'cpm':
+                return this.formatValue(item.cpm);
         }
+
+        // Métricas de ações (conversões)
+        if (item.actions) {
+            const foundAction = item.actions.find(
+                action => action.action_type.replace(/\./g, '_') === metric
+            );
+            if (foundAction) {
+                return this.formatValue(foundAction.value);
+            }
+        }
+
+        // Se não encontrou a métrica, retorna 0
+        return 0;
     }
 
     groupByAge(data: InsightsDemographics[], metric: string = 'impressions'): Record<string, number> {
@@ -232,32 +238,77 @@ export class FacebookInsightsService {
     formatTimelineData(data: InsightsDaily[]): TimelineData {
         console.log('Formatando dados de timeline:', JSON.stringify(data, null, 2));
 
+        // Primeiro identificamos todas as métricas disponíveis
+        const availableMetrics = new Set<string>([
+            'impressions',
+            'clicks',
+            'spend',
+            'ctr',
+            'cpc',
+            'cpm'
+        ]);
+
+        // Adiciona métricas de ações
+        data.forEach(item => {
+            item.actions?.forEach(action => {
+                availableMetrics.add(action.action_type.replace(/\./g, '_'));
+            });
+        });
+
+        // Inicializa o resultado com arrays vazios para todas as métricas
         const result: TimelineData = {
             dates: [],
-            metrics: {
-                impressions: [],
-                clicks: [],
-                spend: [],
-                ctr: [],
-                cpc: [],
-                cpm: []
-            }
+            metrics: {}
         };
+
+        // Inicializa arrays para todas as métricas disponíveis
+        Array.from(availableMetrics).forEach(metric => {
+            result.metrics[metric] = [];
+        });
 
         if (!data?.length) {
             console.log('Sem dados para formatar');
             return result;
         }
 
+        // Ordena os dados por data e processa cada dia
         data.sort((a, b) => new Date(a.date_start).getTime() - new Date(b.date_start).getTime())
             .forEach(item => {
                 result.dates.push(item.date_start);
-                result.metrics.impressions.push(this.formatValue(item.impressions));
-                result.metrics.clicks.push(this.formatValue(item.clicks));
-                result.metrics.spend.push(this.formatValue(item.spend));
-                result.metrics.ctr.push(this.formatValue(item.ctr));
-                result.metrics.cpc.push(this.formatValue(item.cpc));
-                result.metrics.cpm.push(this.formatValue(item.cpm));
+
+                // Processa métricas básicas
+                availableMetrics.forEach(metric => {
+                    let value = 0;
+                    switch (metric) {
+                        case 'impressions':
+                            value = this.formatValue(item.impressions);
+                            break;
+                        case 'clicks':
+                            value = this.formatValue(item.clicks);
+                            break;
+                        case 'spend':
+                            value = this.formatValue(item.spend);
+                            break;
+                        case 'ctr':
+                            value = this.formatValue(item.ctr);
+                            break;
+                        case 'cpc':
+                            value = this.formatValue(item.cpc);
+                            break;
+                        case 'cpm':
+                            value = this.formatValue(item.cpm);
+                            break;
+                        default:
+                            // Para métricas de ações, procura no array de actions
+                            if (item.actions) {
+                                const foundAction = item.actions.find(a => a.action_type.replace(/\./g, '_') === metric);
+                                if (foundAction) {
+                                    value = this.formatValue(foundAction.value);
+                                }
+                            }
+                    }
+                    result.metrics[metric].push(value);
+                });
             });
 
         console.log('Dados de timeline formatados:', result);

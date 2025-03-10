@@ -1,11 +1,15 @@
 import { Widget } from "@/app/(authenticated)/relatorios/page";
 import { MockData } from "@/mock/reports-data";
-import { METRICS } from "./metrics";
+import { getAllMetrics, MetricDefinition } from "./metric-categories";
 
 interface OverviewWidgetProps {
     widget: Widget;
     data: MockData;
 }
+
+type MetricsMap = {
+    [key: string]: MetricDefinition;
+};
 
 // Função para normalizar as chaves das métricas (substituir pontos por underscores)
 function normalizeMetricKey(key: string): string {
@@ -13,6 +17,8 @@ function normalizeMetricKey(key: string): string {
 }
 
 export default function OverviewWidget({ widget, data }: OverviewWidgetProps) {
+    const allMetrics: MetricsMap = getAllMetrics();
+
     // Filtra os itens com base no nível e campanhas selecionadas
     const items = widget.config.level === "account"
         ? data.accounts
@@ -65,7 +71,7 @@ export default function OverviewWidget({ widget, data }: OverviewWidgetProps) {
             {widget.config.metrics?.map((metricKey: string) => {
                 // Normaliza a chave da métrica
                 const normalizedKey = normalizeMetricKey(metricKey);
-                const metric = METRICS[normalizedKey as keyof typeof METRICS];
+                const metric = allMetrics[normalizedKey];
 
                 if (!metric) {
                     console.log(`Métrica não encontrada: ${normalizedKey}`);

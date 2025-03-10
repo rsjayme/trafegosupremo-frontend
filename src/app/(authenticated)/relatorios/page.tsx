@@ -18,7 +18,9 @@ import type { Account, MockData } from "@/mock/reports-data";
 // Constantes
 const DEFAULT_DAYS = 30;
 
-const DEFAULT_TIMELINE_DATA = {
+import { TimelineData } from '@/types/timeline';
+
+const DEFAULT_TIMELINE_DATA: TimelineData = {
     dates: [],
     metrics: {
         impressions: [],
@@ -26,7 +28,18 @@ const DEFAULT_TIMELINE_DATA = {
         spend: [],
         ctr: [],
         cpc: [],
-        cpm: []
+        cpm: [],
+        onsite_conversion_messaging_conversation_started_7d: [],
+        onsite_conversion_messaging_first_reply: [],
+        onsite_conversion_messaging_user_depth_2_message_send: [],
+        onsite_conversion_messaging_user_depth_3_message_send: [],
+        onsite_conversion_total_messaging_connection: [],
+        page_engagement: [],
+        post_engagement: [],
+        post_reaction: [],
+        comment: [],
+        link_click: [],
+        video_view: []
     }
 };
 
@@ -54,7 +67,7 @@ const DEFAULT_ACCOUNT: Account = {
 
 export interface Widget {
     id: string;
-    type: "overview" | "pieChart" | "funnel" | "lineChart" | "barChart";
+    type: "overview" | "pieChart" | "funnel" | "lineChart" | "barChart" | "aiAnalysis";
     title: string;
     position: {
         x: number;
@@ -84,7 +97,9 @@ interface MetricTotals {
     impressions: number;
     clicks: number;
     spend: number;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     actions: any[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     cost_per_action_type: any[];
 }
 
@@ -287,12 +302,14 @@ export default function Relatorios() {
     const aggregateDailyMetrics = (data: InsightsDaily[] | null): InsightsDaily[] | null => {
         if (!data?.length) return null;
 
+        // Mapeia todas as datas disponíveis e organiza métricas por data
         const dailyTotals = new Map<string, {
             impressions: number;
             clicks: number;
             spend: number;
             date_start: string;
             date_stop: string;
+            actions: Map<string, number>;
         }>();
 
         // Soma métricas por dia
@@ -302,15 +319,29 @@ export default function Relatorios() {
                 clicks: 0,
                 spend: 0,
                 date_start: item.date_start,
-                date_stop: item.date_stop
+                date_stop: item.date_stop,
+                actions: new Map<string, number>()
             };
 
-            dailyTotals.set(item.date_start, {
+            // Soma métricas básicas
+            const newMetrics = {
                 ...existing,
                 impressions: existing.impressions + parseFloat(item.impressions || '0'),
                 clicks: existing.clicks + parseFloat(item.clicks || '0'),
                 spend: existing.spend + parseFloat(item.spend || '0')
-            });
+            };
+
+            // Soma métricas de ações
+            if (item.actions) {
+                item.actions.forEach(action => {
+                    const key = action.action_type;
+                    const value = parseFloat(action.value || '0');
+                    const currentValue = existing.actions.get(key) || 0;
+                    existing.actions.set(key, currentValue + value);
+                });
+            }
+
+            dailyTotals.set(item.date_start, newMetrics);
         });
 
         // Converte para array e calcula taxas
@@ -319,16 +350,26 @@ export default function Relatorios() {
             const cpc = daily.clicks && daily.spend ? daily.spend / daily.clicks : 0;
             const cpm = daily.impressions ? (daily.spend / daily.impressions) * 1000 : 0;
 
+            // Converte o Map de ações em array
+            const actions = Array.from(daily.actions.entries()).map(([action_type, value]) => ({
+                action_type,
+                value: value.toString()
+            }));
+
             return {
-                ...data[0], // Mantém outros campos necessários
+                ...data[0], // Mantém campos base como account_id, campaign_name, etc.
                 date_start: daily.date_start,
                 date_stop: daily.date_stop,
                 impressions: daily.impressions.toString(),
                 clicks: daily.clicks.toString(),
                 spend: daily.spend.toString(),
+                reach: data[0].reach || "0",
+                frequency: data[0].frequency || "0",
                 ctr: ctr.toString(),
                 cpc: cpc.toString(),
-                cpm: cpm.toString()
+                cpm: cpm.toString(),
+                actions,
+                cost_per_action_type: data[0].cost_per_action_type || []
             };
         });
     };
@@ -375,6 +416,7 @@ export default function Relatorios() {
         return {
             accounts: [account],
             campaigns: campaigns || [], // Inclui todas as campanhas dos insights
+            daily: daily || [], // Inclui dados diários para uso no LineChartWidget
             since,
             until
         };

@@ -14,7 +14,7 @@ import {
     ChartData
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { METRICS, MetricKey } from "./metrics";
+import { getAllMetrics, MetricDefinition } from "./metric-categories";
 
 // Registrar os componentes do ChartJS
 ChartJS.register(
@@ -49,93 +49,88 @@ interface TimelineData {
     metrics: TimelineMetrics;
 }
 
+type MetricsMap = {
+    [key: string]: MetricDefinition;
+};
+
 const DEFAULT_TIMELINE_DATA: TimelineData = {
     dates: [],
     metrics: {}
 };
 
 export default function LineChartWidget({ widget, data }: LineChartWidgetProps) {
+    const allMetrics: MetricsMap = getAllMetrics();
+
     // Função auxiliar para combinar dados diários de múltiplas campanhas
-    const combineTimelineData = (campaigns: InsightsDaily[]): TimelineData => {
+    const combineTimelineData = (dailyData: InsightsDaily[]): TimelineData => {
+        // Organiza os dados por data
+        const dailyMap = new Map<string, Map<string, number>>();
         const allDates = new Set<string>();
-        const metricsMap = new Map<string, Map<string, number>>();
 
-        // Cria um objeto para armazenar todas as métricas disponíveis
-        const availableMetrics = new Set<string>();
+        // Processa cada registro diário
+        dailyData.forEach(daily => {
+            if (!daily.date_start) return;
 
-        // Coleta todas as datas e métricas disponíveis
-        campaigns.forEach(campaign => {
-            if (campaign.date_start) {
-                allDates.add(campaign.date_start);
+            allDates.add(daily.date_start);
+            const metricsForDate = dailyMap.get(daily.date_start) || new Map<string, number>();
 
-                // Adiciona métricas básicas
-                availableMetrics.add('impressions');
-                availableMetrics.add('clicks');
-                availableMetrics.add('spend');
-                availableMetrics.add('ctr');
-                availableMetrics.add('cpc');
-                availableMetrics.add('cpm');
+            // Processa métricas básicas
+            const impressions = parseFloat(daily.impressions || '0');
+            const clicks = parseFloat(daily.clicks || '0');
+            const spend = parseFloat(daily.spend || '0');
 
-                // Adiciona métricas de actions
-                campaign.actions?.forEach(action => {
+            metricsForDate.set('impressions', (metricsForDate.get('impressions') || 0) + impressions);
+            metricsForDate.set('clicks', (metricsForDate.get('clicks') || 0) + clicks);
+            metricsForDate.set('spend', (metricsForDate.get('spend') || 0) + spend);
+
+            // Calcula taxas
+            const ctr = clicks && impressions ? (clicks / impressions) * 100 : 0;
+            const cpc = clicks && spend ? spend / clicks : 0;
+            const cpm = impressions ? (spend / impressions) * 1000 : 0;
+
+            metricsForDate.set('ctr', ctr);
+            metricsForDate.set('cpc', cpc);
+            metricsForDate.set('cpm', cpm);
+
+            // Processa métricas de ações
+            if (daily.actions) {
+                daily.actions.forEach(action => {
                     const key = action.action_type.replace(/\./g, '_');
-                    availableMetrics.add(key);
+                    const value = parseFloat(action.value || '0');
+                    metricsForDate.set(key, (metricsForDate.get(key) || 0) + value);
                 });
             }
+
+            dailyMap.set(daily.date_start, metricsForDate);
         });
 
-        // Inicializa o mapa de métricas por data
+        // Organiza os resultados
         const sortedDates = Array.from(allDates).sort();
-        sortedDates.forEach(date => {
-            metricsMap.set(date, new Map<string, number>());
-        });
-
-        // Soma todas as métricas por data
-        campaigns.forEach(campaign => {
-            if (campaign.date_start) {
-                const dailyMetrics = metricsMap.get(campaign.date_start)!;
-
-                // Soma métricas básicas
-                const impressions = parseFloat(campaign.impressions || '0');
-                const clicks = parseFloat(campaign.clicks || '0');
-                const spend = parseFloat(campaign.spend || '0');
-
-                dailyMetrics.set('impressions', (dailyMetrics.get('impressions') || 0) + impressions);
-                dailyMetrics.set('clicks', (dailyMetrics.get('clicks') || 0) + clicks);
-                dailyMetrics.set('spend', (dailyMetrics.get('spend') || 0) + spend);
-
-                // Calcula taxas
-                dailyMetrics.set('ctr', clicks && impressions ? (clicks / impressions) * 100 : 0);
-                dailyMetrics.set('cpc', clicks && spend ? spend / clicks : 0);
-                dailyMetrics.set('cpm', impressions ? (spend / impressions) * 1000 : 0);
-
-                // Soma métricas de actions
-                campaign.actions?.forEach(action => {
-                    const key = action.action_type.replace(/\./g, '_');
-                    const value = typeof action.value === 'string' ? parseFloat(action.value) : Number(action.value);
-                    dailyMetrics.set(key, (dailyMetrics.get(key) || 0) + value);
-                });
-            }
-        });
-
-        // Prepara o resultado final
         const result: TimelineData = {
             dates: sortedDates,
             metrics: {}
         };
 
-        // Inicializa arrays para cada métrica
-        availableMetrics.forEach(metric => {
+        // Inicializa as métricas disponíveis
+        if (dailyData[0]?.actions) {
+            dailyData[0].actions.forEach(action => {
+                const key = action.action_type.replace(/\./g, '_');
+                result.metrics[key] = [];
+            });
+        }
+
+        // Adiciona métricas básicas
+        ['impressions', 'clicks', 'spend', 'ctr', 'cpc', 'cpm'].forEach(metric => {
             result.metrics[metric] = [];
         });
 
-        // Preenche os valores para cada métrica em cada data
+        // Preenche os valores para cada data
         sortedDates.forEach(date => {
-            const dailyMetrics = metricsMap.get(date)!;
-            availableMetrics.forEach(metric => {
-                if (metric in result.metrics) {
-                    result.metrics[metric].push(dailyMetrics.get(metric) || 0);
-                }
+            const metricsForDate = dailyMap.get(date);
+            if (!metricsForDate) return;
+
+            Object.keys(result.metrics).forEach(metric => {
+                result.metrics[metric].push(metricsForDate.get(metric) || 0);
             });
         });
 
@@ -171,13 +166,25 @@ export default function LineChartWidget({ widget, data }: LineChartWidgetProps) 
             );
         }
 
-        timelineData = combineTimelineData(selectedCampaigns as InsightsDaily[]);
+        // Para campanhas, usamos os dados diários filtrados
+        const selectedCampaignsDaily = data.daily?.filter(daily =>
+            widget.config.campaignIds?.includes(daily.campaign_name) ||
+            (widget.config.campaignId && daily.campaign_name === widget.config.campaignId)
+        );
+
+        if (!selectedCampaignsDaily?.length) {
+            console.log('Sem dados diários disponíveis para as campanhas selecionadas');
+            timelineData = DEFAULT_TIMELINE_DATA;
+        } else {
+            console.log('Processando dados diários das campanhas:', selectedCampaignsDaily);
+            timelineData = combineTimelineData(selectedCampaignsDaily);
+        }
     }
 
     const chartData: ChartData<'line'> = {
         labels: timelineData.dates,
         datasets: widget.config.metrics?.map((metricKey: string, index: number) => {
-            const metric = METRICS[metricKey as MetricKey];
+            const metric = allMetrics[metricKey];
             const metricData = timelineData.metrics[metricKey] || [];
             return {
                 label: metric?.label || metricKey,
@@ -200,7 +207,8 @@ export default function LineChartWidget({ widget, data }: LineChartWidgetProps) 
                 callbacks: {
                     label(context) {
                         const value = context.raw as number;
-                        const metric = METRICS[widget.config.metrics?.[context.datasetIndex || 0] as MetricKey];
+                        const metricKey = widget.config.metrics?.[context.datasetIndex || 0];
+                        const metric = metricKey ? allMetrics[metricKey] : null;
                         return metric ? `${context.dataset.label}: ${metric.format(value)}` : context.dataset.label || '';
                     }
                 }
@@ -213,7 +221,7 @@ export default function LineChartWidget({ widget, data }: LineChartWidgetProps) 
                     callback(value) {
                         const firstMetric = widget.config.metrics?.[0];
                         if (!firstMetric) return value;
-                        const metric = METRICS[firstMetric as MetricKey];
+                        const metric = allMetrics[firstMetric];
                         return metric ? metric.format(Number(value)) : value;
                     }
                 }

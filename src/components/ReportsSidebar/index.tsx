@@ -108,15 +108,14 @@ const widgetTemplates: WidgetTemplate[] = [
     },
 ];
 
-type DragItem = Omit<Widget, "id" | "position"> & { template: WidgetTemplate };
-
 function DraggableWidget({ template }: { template: WidgetTemplate }) {
     const ref = useRef<HTMLDivElement>(null);
-    const [{ isDragging }, connectDrag] = useDrag<DragItem, void, { isDragging: boolean }>({
+    const [{ isDragging }, connectDrag] = useDrag({
         type: "WIDGET",
         item: {
-            ...template.defaultConfig,
+            type: "WIDGET" as const,
             template,
+            defaultConfig: template.defaultConfig
         },
         collect: (monitor) => ({
             isDragging: monitor.isDragging(),

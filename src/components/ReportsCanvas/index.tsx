@@ -1,15 +1,18 @@
+import { useState, useRef, useEffect } from "react";
+import { useDrag } from "react-dnd";
 import { Widget } from "@/app/(authenticated)/relatorios/page";
 import { MockData } from "@/mock/reports-data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Settings, X } from "lucide-react";
-import { useState } from "react";
+import { Settings, X, GripVertical } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { DropZone } from "@/components/DropZone";
+import { WidgetMetricSelector } from "./WidgetMetricSelector";
 import PieChartWidget from "./PieChartWidget";
 import FunnelChartWidget from "./FunnelChartWidget";
 import OverviewWidget from "./OverviewWidget";
 import LineChartWidget from "./LineChartWidget";
-import { METRICS } from "./metrics";
+import { AIAnalysisWidget } from "./AIAnalysisWidget";
 
 interface ReportsCanvasProps {
     widgets: Widget[];
@@ -19,34 +22,66 @@ interface ReportsCanvasProps {
     data: MockData;
 }
 
-function WidgetCard({
-    widget,
-    data,
-    onUpdate,
-    onRemove,
-}: {
+interface WidgetCardProps {
     widget: Widget;
     data: MockData;
     onUpdate: (updates: Partial<Widget>) => void;
     onRemove: () => void;
-}) {
+}
+
+function WidgetCard({ widget, data, onUpdate, onRemove }: WidgetCardProps) {
     const [isHovered, setIsHovered] = useState(false);
+    const gripRef = useRef<HTMLDivElement>(null);
+
     const containerClass = widget.type === "overview"
         ? "relative p-4 rounded-lg border bg-card col-span-3"
         : "relative p-4 rounded-lg border bg-card col-span-2 row-span-2";
 
-    // Métricas já estão normalizadas no objeto METRICS
-    const metricOptions = Object.entries(METRICS).reduce<Record<string, string>>((acc, [key, value]) => {
-        acc[key] = value.label;
-        return acc;
-    }, {});
+    const [{ isDragging }, dragRef] = useDrag(() => ({
+        type: 'PLACED_WIDGET',
+        item: () => ({
+            id: widget.id,
+            currentPosition: widget.position,
+            type: 'PLACED_WIDGET'
+        }),
+        collect: (monitor) => ({
+            isDragging: monitor.isDragging()
+        }),
+        previewOptions: {
+            captureDraggingState: true
+        }
+    }), [widget.id, widget.position]);
+
+    useEffect(() => {
+        if (gripRef.current) {
+            dragRef(gripRef);
+        }
+    }, [dragRef]);
 
     return (
         <div
-            className={containerClass}
+            className={cn(
+                containerClass,
+                isDragging && "opacity-50",
+                "transition-opacity duration-200"
+            )}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
+            <div
+                ref={gripRef}
+                className={cn(
+                    "absolute -left-3 top-1/2 -translate-y-1/2 p-2 cursor-move group opacity-0 transition-all duration-200",
+                    isHovered && "opacity-100",
+                    isDragging && "bg-primary/10 scale-110"
+                )}
+            >
+                <GripVertical className={cn(
+                    "h-4 w-4 transition-colors duration-200",
+                    "group-hover:text-primary",
+                    isDragging && "text-primary"
+                )} />
+            </div>
             <div className="mb-4 font-medium">{widget.title}</div>
 
             {isHovered && (
@@ -112,7 +147,7 @@ function WidgetCard({
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium">Campanhas</label>
                                         <div className="max-h-48 overflow-y-auto border rounded-md p-2 space-y-2">
-                                            {data.accounts[0]?.id && data.campaigns.map((campaign) => (
+                                            {data.accounts[0]?.id && data.campaigns.map((campaign: { campaign_name: string }) => (
                                                 <label key={campaign.campaign_name} className="flex items-center space-x-2 cursor-pointer hover:bg-secondary/20 p-1 rounded">
                                                     <input
                                                         type="checkbox"
@@ -142,7 +177,7 @@ function WidgetCard({
                                     </div>
                                 )}
 
-                                {widget.type === "pieChart" ? (
+                                {widget.type === "pieChart" && (
                                     <>
                                         <div className="space-y-2">
                                             <label className="text-sm font-medium">Tipo de Breakdown</label>
@@ -170,113 +205,107 @@ function WidgetCard({
                                                 ))}
                                             </div>
                                         </div>
-                                        <div className="space-y-2">
+
+                                        <div className="space-y-4">
                                             <label className="text-sm font-medium">Métrica</label>
-                                            <div className="flex flex-wrap gap-2">
-                                                {Object.entries({
-                                                    impressions: "Impressões",
-                                                    clicks: "Cliques",
-                                                    spend: "Gastos",
-                                                    reach: "Alcance"
-                                                }).map(([value, label]) => (
-                                                    <button
-                                                        key={value}
-                                                        onClick={() => onUpdate({
-                                                            config: {
-                                                                ...widget.config,
-                                                                metric: value
-                                                            }
-                                                        })}
-                                                        className={`px-3 py-1 rounded-full text-sm transition-colors ${widget.config.metric === value
-                                                            ? "bg-primary text-primary-foreground"
-                                                            : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                                                            }`}
-                                                    >
-                                                        {label}
-                                                    </button>
-                                                ))}
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <div className="mb-2 text-xs text-muted-foreground">Métricas Básicas</div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {Object.entries({
+                                                            impressions: "Impressões",
+                                                            clicks: "Cliques",
+                                                            spend: "Gasto"
+                                                        }).map(([value, label]) => (
+                                                            <button
+                                                                key={value}
+                                                                onClick={() => onUpdate({
+                                                                    config: {
+                                                                        ...widget.config,
+                                                                        metric: value
+                                                                    }
+                                                                })}
+                                                                className={`px-3 py-1 rounded-full text-sm transition-colors ${widget.config.metric === value
+                                                                    ? "bg-primary text-primary-foreground"
+                                                                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                                                                    }`}
+                                                            >
+                                                                {label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <div className="mb-2 text-xs text-muted-foreground">Métricas de Engajamento</div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {Object.entries({
+                                                            page_engagement: "Engajamento da Página",
+                                                            post_engagement: "Engajamento do Post",
+                                                            post_reaction: "Reações",
+                                                            video_view: "Visualizações de Vídeo",
+                                                            link_click: "Cliques no Link"
+                                                        }).map(([value, label]) => (
+                                                            <button
+                                                                key={value}
+                                                                onClick={() => onUpdate({
+                                                                    config: {
+                                                                        ...widget.config,
+                                                                        metric: value
+                                                                    }
+                                                                })}
+                                                                className={`px-3 py-1 rounded-full text-sm transition-colors ${widget.config.metric === value
+                                                                    ? "bg-primary text-primary-foreground"
+                                                                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                                                                    }`}
+                                                            >
+                                                                {label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <div className="mb-2 text-xs text-muted-foreground">Métricas de Conversação</div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {Object.entries({
+                                                            onsite_conversion_messaging_conversation_started_7d: "Conversas Iniciadas",
+                                                            onsite_conversion_messaging_first_reply: "Primeiras Respostas",
+                                                            onsite_conversion_messaging_user_depth_2_message_send: "Mensagens (Prof. 2)",
+                                                            onsite_conversion_messaging_user_depth_3_message_send: "Mensagens (Prof. 3)",
+                                                            onsite_conversion_total_messaging_connection: "Conexões de Mensagem"
+                                                        }).map(([value, label]) => (
+                                                            <button
+                                                                key={value}
+                                                                onClick={() => onUpdate({
+                                                                    config: {
+                                                                        ...widget.config,
+                                                                        metric: value
+                                                                    }
+                                                                })}
+                                                                className={`px-3 py-1 rounded-full text-sm transition-colors ${widget.config.metric === value
+                                                                    ? "bg-primary text-primary-foreground"
+                                                                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                                                                    }`}
+                                                            >
+                                                                {label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </>
-                                ) : widget.type === "funnel" ? (
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium">Métricas do Funil</label>
-                                        <div className="flex flex-wrap gap-2">
-                                            {Object.entries(metricOptions).map(([key, label]) => {
-                                                const normalizedKey = key;
-                                                const isSelected = widget.config.funnelMetrics?.includes(normalizedKey);
-                                                const isDisabled = widget.config.funnelMetrics &&
-                                                    widget.config.funnelMetrics.length >= 3 &&
-                                                    !isSelected;
+                                )}
 
-                                                return (
-                                                    <button
-                                                        key={normalizedKey}
-                                                        onClick={() => {
-                                                            const currentMetrics = widget.config.funnelMetrics || [];
-                                                            let newMetrics = isSelected
-                                                                ? currentMetrics.filter(m => m !== normalizedKey)
-                                                                : [...currentMetrics, normalizedKey];
-
-                                                            // Limita a 3 métricas
-                                                            newMetrics = newMetrics.slice(0, 3);
-
-                                                            onUpdate({
-                                                                config: {
-                                                                    ...widget.config,
-                                                                    funnelMetrics: newMetrics
-                                                                }
-                                                            });
-                                                        }}
-                                                        disabled={isDisabled}
-                                                        className={`px-3 py-1 rounded-full text-sm transition-colors ${isSelected
-                                                                ? "bg-primary text-primary-foreground"
-                                                                : isDisabled
-                                                                    ? "bg-gray-200 text-gray-500 cursor-not-allowed"
-                                                                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                                                            }`}
-                                                    >
-                                                        {label}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                        <p className="text-xs text-muted-foreground mt-2">
-                                            Selecione até 3 métricas para formar o funil
-                                        </p>
-                                    </div>
-                                ) : (
+                                {/* Seletor de métricas (exceto para PieChart que tem seu próprio) */}
+                                {widget.type !== "pieChart" && (
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium">Métricas</label>
-                                        <div className="flex flex-wrap gap-2">
-                                            {Object.entries(metricOptions).map(([key, label]) => {
-                                                const normalizedKey = key;
-                                                const isSelected = widget.config.metrics?.includes(normalizedKey);
-                                                return (
-                                                    <button
-                                                        key={normalizedKey}
-                                                        onClick={() => {
-                                                            const currentMetrics = widget.config.metrics || [];
-                                                            const newMetrics = isSelected
-                                                                ? currentMetrics.filter(m => m !== normalizedKey)
-                                                                : [...currentMetrics, normalizedKey];
-                                                            onUpdate({
-                                                                config: {
-                                                                    ...widget.config,
-                                                                    metrics: newMetrics
-                                                                }
-                                                            });
-                                                        }}
-                                                        className={`px-3 py-1 rounded-full text-sm transition-colors ${isSelected
-                                                            ? "bg-primary text-primary-foreground"
-                                                            : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                                                            }`}
-                                                    >
-                                                        {label}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
+                                        <WidgetMetricSelector
+                                            widget={widget}
+                                            onUpdate={onUpdate}
+                                        />
                                     </div>
                                 )}
                             </div>
@@ -293,6 +322,16 @@ function WidgetCard({
             {widget.type === "lineChart" && <LineChartWidget widget={widget} data={data} />}
             {widget.type === "pieChart" && <PieChartWidget widget={widget} data={data} />}
             {widget.type === "funnel" && <FunnelChartWidget widget={widget} data={data} />}
+            {widget.type === "aiAnalysis" && (
+                <AIAnalysisWidget
+                    brandId={Number(data.accounts[0]?.id)}
+                    campaignId={widget.config.campaignId || ''}
+                    period={{
+                        since: data.since,
+                        until: data.until
+                    }}
+                />
+            )}
         </div>
     );
 }
@@ -310,6 +349,7 @@ export function ReportsCanvas({
         <div className="space-y-4 p-4" id="reports-canvas">
             <DropZone
                 onDrop={onAddWidget}
+                onUpdateWidget={onUpdateWidget}
                 index={0}
                 widgets={widgets}
             />
@@ -323,6 +363,7 @@ export function ReportsCanvas({
                     />
                     <DropZone
                         onDrop={onAddWidget}
+                        onUpdateWidget={onUpdateWidget}
                         index={index + 1}
                         widgets={widgets}
                     />
