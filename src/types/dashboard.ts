@@ -48,9 +48,14 @@ export interface FacebookCampaignMetrics {
     cost_per_action_type: FacebookAction[];
 }
 
+// Nova interface que estende FacebookCampaignMetrics e adiciona date
+export interface DailyCampaignMetrics extends FacebookCampaignMetrics {
+    date: string;
+}
+
 export interface DashboardData {
-    current: FacebookCampaignMetrics[];
-    previous?: FacebookCampaignMetrics[];
+    current: DailyCampaignMetrics[];
+    previous?: DailyCampaignMetrics[];
 }
 
 export interface DashboardMetric {
