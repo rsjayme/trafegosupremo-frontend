@@ -26,12 +26,12 @@ export default function Dashboard() {
                     <h1 className="text-2xl font-semibold mb-6">Dashboard</h1>
                     <div className="bg-card p-6 rounded-lg shadow-sm border text-center space-y-4">
                         <p className="text-muted-foreground">
-                            Você precisa vincular uma conta de anúncios para acessar o dashboard.
+                            Você precisa vincular uma conta de anúncios a uma marca para acessar o Dashboard.
                         </p>
                         <Button
-                            onClick={() => router.push("/configuracoes")}
+                            onClick={() => router.push("/marcas")}
                         >
-                            Ir para Configurações
+                            Ir para Marcas
                         </Button>
                     </div>
                 </div>
