@@ -7,12 +7,14 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { brandsService } from '@/services/brands';
 import { useRouter } from 'next/navigation'
+import { useBrand } from "@/contexts/BrandContext";
 
 
 export function BrandForm() {
     const router = useRouter();
     const [name, setName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const { refetchBrands } = useBrand();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -27,6 +29,7 @@ export function BrandForm() {
             await brandsService.createBrand(name);
             toast.success('Marca criada com sucesso!');
             router.push('/marcas');
+            refetchBrands();
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Erro ao criar marca');
         } finally {
