@@ -12,6 +12,11 @@ interface User {
     role: string;
 }
 
+interface ChangePasswordData {
+    currentPassword: string;
+    newPassword: string;
+}
+
 interface LoginResponse {
     access_token: string;
     user: User;
@@ -93,6 +98,20 @@ export const authService = {
                 }
             }
             throw new Error('Erro ao obter perfil. Tente novamente.');
+        }
+    },
+
+    async changePassword(data: ChangePasswordData): Promise<void> {
+        try {
+            console.log('Tentando alterar senha');
+            await api.post('/users/change-password', data);
+            console.log('Senha alterada com sucesso');
+        } catch (error: unknown) {
+            console.error('Erro ao alterar senha:', error);
+            if (isApiError(error) && error.response?.data) {
+                throw new Error(error.response.data.message);
+            }
+            throw new Error('Erro ao alterar senha. Tente novamente.');
         }
     }
 };

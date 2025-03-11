@@ -72,7 +72,7 @@ export default function PrivacyPolicy() {
                 <section>
                     <h2 className="text-2xl font-semibold mb-4">7. Contato</h2>
                     <p className="mb-4">
-                        Para questões relacionadas a esta política de privacidade, entre em contato conosco através do email: contato@trafficgenius.com.br
+                        Para questões relacionadas a esta política de privacidade, entre em contato conosco através do email: privacy@exemplo.com
                     </p>
                 </section>
 

@@ -94,7 +94,7 @@ export default function TermsOfService() {
                 <section>
                     <h2 className="text-2xl font-semibold mb-4">10. Contato</h2>
                     <p className="mb-4">
-                        Para questões relacionadas a estes termos de serviço, entre em contato conosco através do email: contato@trafficgenius.com.br
+                        Para questões relacionadas a estes termos de serviço, entre em contato conosco através do email: terms@exemplo.com
                     </p>
                 </section>
 

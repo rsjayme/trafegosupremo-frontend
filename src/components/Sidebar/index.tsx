@@ -7,7 +7,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
     ChartLine,
     House,
-    Megaphone,
     Gear,
     Buildings,
     Bell
@@ -18,11 +17,6 @@ const menuItems = [
         label: "Dashboard",
         icon: House,
         href: "/dashboard",
-    },
-    {
-        label: "Campanhas",
-        icon: Megaphone,
-        href: "/campanhas",
     },
     {
         label: "Relatórios",
@@ -42,7 +36,7 @@ const menuItems = [
     {
         label: "Configurações",
         icon: Gear,
-        href: "/configuracoes",
+        href: "/settings",
     },
 ];
 
