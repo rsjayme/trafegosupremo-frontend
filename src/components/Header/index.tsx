@@ -16,16 +16,23 @@ import { useEffect, useState } from "react";
 
 export function Header() {
     const { logout } = useAuth();
-    const { brands, selectedBrand, setSelectedBrand, isLoading, error } = useBrand();
+    const { brands, selectedBrand, setSelectedBrand, isLoading, error, refetchBrands } = useBrand();
+    const { user } = useAuth();
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
         setMounted(true);
     }, []);
 
+    useEffect(() => {
+        refetchBrands();
+    }, [user]);
+
+
     if (!mounted) {
         return null;
     }
+
 
     const renderBrandSelector = () => {
         if (isLoading) {
@@ -41,6 +48,8 @@ export function Header() {
                 </div>
             );
         }
+
+
 
         if (!brands || brands.length === 0) {
             return (
@@ -85,7 +94,7 @@ export function Header() {
             <div className="px-6 h-16 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <Crown className="h-6 w-6 text-primary" weight="fill" />
-                    <span className="text-xl font-semibold">Tráfego Supremo</span>
+                    <span className="text-xl font-semibold">Tráffic Genius</span>
                 </div>
 
                 <div className="flex items-center gap-4">

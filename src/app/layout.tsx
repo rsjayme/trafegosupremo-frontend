@@ -9,8 +9,8 @@ import { FacebookSDKProvider } from "@/components/FacebookSDKProvider";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Tráfego Supremo",
-  description: "Sistema de gerenciamento de tráfego Facebook",
+  title: "Traffic Genius",
+  description: "O canivete suíço do gestor de tráfego",
 };
 
 // Desativa a geração estática para páginas que precisam de dados dinâmicos
