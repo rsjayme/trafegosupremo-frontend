@@ -1,6 +1,5 @@
 import api from '@/lib/api';
 import type {
-    DashboardData,
     DashboardFilters,
     FacebookCampaignMetrics,
     AggregatedMetrics
@@ -12,7 +11,8 @@ export class DashboardService {
      * @param filters - Filters including brandId, date range and comparison flag
      * @returns Promise with current and optional previous period data
      */
-    async getDashboardData(filters: DashboardFilters): Promise<DashboardData> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async getDashboardData(filters: DashboardFilters): Promise<any> {
         if (!filters.accountId) {
             throw new Error('accountId é necessário para buscar métricas');
         }
