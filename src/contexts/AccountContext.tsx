@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 import { brandsService } from "@/services/brands";
+import { useAuth } from "./AuthContext";
 
 interface Account {
     id: string;
@@ -23,12 +24,15 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
     const [accounts, setAccounts] = useState<Account[]>([]);
 
+    const { user } = useAuth();
+
     useEffect(() => {
         setMounted(true);
     }, []);
 
     useEffect(() => {
         if (!mounted) return;
+        if (!user) return setLoading(false);
 
         async function loadAccounts() {
             try {
@@ -63,7 +67,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
         }
 
         loadAccounts();
-    }, [mounted, selectedAccount]);
+    }, [mounted, selectedAccount, user]);
 
     if (!mounted || loading) {
         return null;

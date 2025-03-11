@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { Brand } from "@/types/brand";
 import { brandsService } from "@/services/brands";
+import { useAuth } from "./AuthContext";
 
 interface BrandContextType {
     selectedBrand: Brand | null;
@@ -17,6 +18,7 @@ interface BrandContextType {
 const BrandContext = createContext<BrandContextType | undefined>(undefined);
 
 export function BrandProvider({ children }: { children: React.ReactNode }) {
+    const { user } = useAuth();
     const [mounted, setMounted] = useState(false);
     const [selectedBrand, setSelectedBrand] = useState<Brand | null>(null);
     const [brands, setBrands] = useState<Brand[]>([]);
@@ -24,6 +26,13 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
     const [error, setError] = useState<string | null>(null);
 
     const fetchBrands = async () => {
+        console.log('user', user);
+        // Se não houver usuário autenticado, não tenta carregar as brands
+        if (!user) {
+            setIsLoading(false);
+            return;
+        }
+
         try {
             setIsLoading(true);
             setError(null);
@@ -44,8 +53,12 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         setMounted(true);
-        fetchBrands();
-    }, []);
+        if (user) {
+            fetchBrands();
+        } else {
+            setIsLoading(false);
+        }
+    }, [user]); // Adiciona user como dependência para recarregar quando o usuário mudar
 
     if (!mounted) {
         return null;
