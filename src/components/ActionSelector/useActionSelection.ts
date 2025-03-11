@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     ACTION_DEFINITIONS,
-    DEFAULT_SELECTED_ACTIONS,
+    DEFAULT_ACTIONS,
     CATEGORIES
 } from './constants';
 
@@ -38,7 +38,7 @@ interface UseActionSelectionReturn {
 }
 
 export function useActionSelection({
-    initialSelection = DEFAULT_SELECTED_ACTIONS,
+    initialSelection = DEFAULT_ACTIONS,
     onSelectionChange
 }: UseActionSelectionProps = {}): UseActionSelectionReturn {
     // State
