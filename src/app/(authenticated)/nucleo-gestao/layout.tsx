@@ -29,7 +29,7 @@ export default function GestaoLayout({ children }: GestaoLayoutProps) {
     ], []);
 
     return (
-        <div className="flex h-full">
+        <div className="flex w-full h-full">
             <aside className="w-[240px] border-r bg-background">
                 <div className="h-14 border-b flex items-center px-4">
                     <h2 className="font-medium">Núcleo de Gestão</h2>
@@ -59,7 +59,7 @@ export default function GestaoLayout({ children }: GestaoLayoutProps) {
                     </nav>
                 </ScrollArea>
             </aside>
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 w-full overflow-hidden">
                 {children}
             </div>
         </div>
