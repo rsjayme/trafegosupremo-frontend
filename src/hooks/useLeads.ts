@@ -1,30 +1,26 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { leadsService } from '@/services/leads';
-import type { LeadFormData, LeadUpdate, KanbanResponse } from '@/lib/types/lead';
+import type { LeadFormData, APILead } from '@/lib/types/lead';
 
-const METADATA_FIELDS = ['id', 'createdAt', 'updatedAt'] as const;
-
-const cleanUpdateData = (data: Record<string, unknown>) => {
-    const cleaned = { ...data };
-
-    METADATA_FIELDS.forEach(field => {
-        delete cleaned[field];
-    });
-
-    return cleaned as Partial<LeadFormData>;
-};
+// Converte dados do form para o formato da API
+const convertToApiFormat = (data: Partial<LeadFormData>): Partial<APILead> => ({
+    ...data,
+    lastContactDate: data.lastContactDate?.toISOString() ?? null,
+    nextContactDate: data.nextContactDate?.toISOString() ?? null,
+});
 
 export function useLeads() {
     const queryClient = useQueryClient();
 
-    const { data: kanban, isLoading } = useQuery<KanbanResponse>({
+    const { data: kanban, isLoading } = useQuery({
         queryKey: ['leads', 'kanban'],
         queryFn: leadsService.getKanban
     });
 
     const createMutation = useMutation({
-        mutationFn: (data: LeadFormData) => leadsService.create(data),
+        mutationFn: (data: LeadFormData) =>
+            leadsService.create(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['leads'] });
             toast.success('Lead criado com sucesso');
@@ -36,20 +32,15 @@ export function useLeads() {
 
     type UpdateParams = {
         id: number;
-        data: LeadUpdate;
-        showToast?: boolean;
+        data: Partial<APILead>;
     };
 
     const updateMutation = useMutation({
-        mutationFn: ({ id, data }: UpdateParams) => {
-            const cleanedData = cleanUpdateData(data);
-            return leadsService.update(id, cleanedData);
-        },
-        onSuccess: (_, variables) => {
+        mutationFn: ({ id, data }: UpdateParams) =>
+            leadsService.update(id, data),
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['leads'] });
-            if (variables.showToast) {
-                toast.success('Lead atualizado com sucesso');
-            }
+            toast.success('Lead atualizado com sucesso');
         },
         onError: (error: Error) => {
             toast.error(error.message);

@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { leadSchema, type LeadFormData } from '@/lib/schemas/lead';
@@ -39,6 +38,8 @@ interface LeadFormDialogProps {
 }
 
 export function LeadFormDialog({ trigger, defaultValues, onSubmit }: LeadFormDialogProps) {
+    console.log('Default Values:', defaultValues);
+
     const form = useForm<LeadFormData>({
         resolver: zodResolver(leadSchema),
         defaultValues: {
@@ -47,41 +48,34 @@ export function LeadFormDialog({ trigger, defaultValues, onSubmit }: LeadFormDia
             value: 0,
             email: '',
             phone: '',
-            lastContactDate: '',
-            nextContactDate: '',
+            lastContactDate: null,
+            nextContactDate: null,
             observations: '',
-            ...defaultValues
+            ...defaultValues,
+            // Converte as datas se existirem nos defaultValues
+            ...(defaultValues?.lastContactDate && {
+                lastContactDate: new Date(defaultValues.lastContactDate)
+            }),
+            ...(defaultValues?.nextContactDate && {
+                nextContactDate: new Date(defaultValues.nextContactDate)
+            })
         }
     });
 
     const handleSubmit = (data: LeadFormData) => {
-        // Envia o número do telefone sem formatação
-        onSubmit({
+        console.log('Form Data Before Submit:', data);
+
+        const formattedData = {
             ...data,
             phone: unformatPhone(data.phone)
-        });
+        };
+
+        console.log('Formatted Data:', formattedData);
+        onSubmit(formattedData);
     };
 
-    // Reseta o form quando o defaultValues muda
-    useEffect(() => {
-        if (defaultValues) {
-            form.reset({
-                status: 'LEAD',
-                priority: 'MEDIA',
-                value: 0,
-                email: '',
-                phone: '',
-                lastContactDate: '',
-                nextContactDate: '',
-                observations: '',
-                ...defaultValues,
-                // Formata o telefone quando carrega os dados
-                ...(defaultValues.phone && {
-                    phone: formatPhone(defaultValues.phone)
-                })
-            });
-        }
-    }, [form, defaultValues]);
+    // Debug: Monitor form values
+    console.log('Form Values:', form.watch());
 
     return (
         <Dialog>
@@ -246,35 +240,49 @@ export function LeadFormDialog({ trigger, defaultValues, onSubmit }: LeadFormDia
                         <FormField
                             control={form.control}
                             name="lastContactDate"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Último Contato</FormLabel>
-                                    <FormControl>
-                                        <DateTimePicker
-                                            date={field.value ? new Date(field.value) : undefined}
-                                            onChange={(date) => field.onChange(date?.toISOString() || '')}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
+                            render={({ field: { value, onChange } }) => {
+                                // Debug: Monitor date field value
+                                console.log('Last Contact Field Value:', value);
+                                return (
+                                    <FormItem>
+                                        <FormLabel>Último Contato</FormLabel>
+                                        <FormControl>
+                                            <DateTimePicker
+                                                date={value}
+                                                onChange={(newDate) => {
+                                                    console.log('Last Contact Changed:', newDate);
+                                                    onChange(newDate);
+                                                }}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                );
+                            }}
                         />
 
                         <FormField
                             control={form.control}
                             name="nextContactDate"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Próximo Contato</FormLabel>
-                                    <FormControl>
-                                        <DateTimePicker
-                                            date={field.value ? new Date(field.value) : undefined}
-                                            onChange={(date) => field.onChange(date?.toISOString() || '')}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
+                            render={({ field: { value, onChange } }) => {
+                                // Debug: Monitor date field value
+                                console.log('Next Contact Field Value:', value);
+                                return (
+                                    <FormItem>
+                                        <FormLabel>Próximo Contato</FormLabel>
+                                        <FormControl>
+                                            <DateTimePicker
+                                                date={value}
+                                                onChange={(newDate) => {
+                                                    console.log('Next Contact Changed:', newDate);
+                                                    onChange(newDate);
+                                                }}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                );
+                            }}
                         />
 
                         <FormField

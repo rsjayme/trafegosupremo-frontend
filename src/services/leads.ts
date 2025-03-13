@@ -1,10 +1,26 @@
 import api from '@/lib/api';
-import type {
-    APILead,
-    LeadFormData,
-    LeadUpdate,
-    KanbanResponse
-} from '@/lib/types/lead';
+import type { LeadFormData, APILead } from '@/lib/types/lead';
+
+// Converte dados do form para o formato da API
+const convertToApiFormat = (data: Partial<LeadFormData>): Partial<APILead> => ({
+    ...data,
+    lastContactDate: data.lastContactDate?.toISOString() ?? null,
+    nextContactDate: data.nextContactDate?.toISOString() ?? null,
+});
+
+// Converte dados da API para o formato do form
+const convertToFormFormat = (data: APILead): LeadFormData => ({
+    ...data,
+    lastContactDate: data.lastContactDate ? new Date(data.lastContactDate) : null,
+    nextContactDate: data.nextContactDate ? new Date(data.nextContactDate) : null,
+});
+
+interface KanbanResponse {
+    LEAD: APILead[];
+    PROPOSTA_ENVIADA: APILead[];
+    FECHADO: APILead[];
+    NAO_FECHADO: APILead[];
+}
 
 interface ApiError {
     message: string;
@@ -41,7 +57,8 @@ export const leadsService = {
 
     async create(data: LeadFormData): Promise<APILead> {
         try {
-            const response = await api.post<APILead>('/leads', data);
+            const apiData = convertToApiFormat(data);
+            const response = await api.post<APILead>('/leads', apiData);
             return response.data;
         } catch (error) {
             if (isApiError(error) && error.response?.data) {
@@ -51,9 +68,10 @@ export const leadsService = {
         }
     },
 
-    async update(id: number, data: LeadUpdate): Promise<APILead> {
+    async update(id: number, data: Partial<LeadFormData>): Promise<APILead> {
         try {
-            const response = await api.patch<APILead>(`/leads/${id}`, data);
+            const apiData = convertToApiFormat(data);
+            const response = await api.patch<APILead>(`/leads/${id}`, apiData);
             return response.data;
         } catch (error) {
             if (isApiError(error) && error.response?.data) {

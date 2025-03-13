@@ -7,6 +7,7 @@ import { Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
+import type { SelectSingleEventHandler } from 'react-day-picker';
 import {
     Popover,
     PopoverContent,
@@ -15,40 +16,64 @@ import {
 import { Input } from '@/components/ui/input';
 
 interface DateTimePickerProps {
-    date?: Date;
-    onChange?: (date: Date | undefined) => void;
+    date: Date | null;
+    onChange: (date: Date | null) => void;
 }
 
 export function DateTimePicker({ date, onChange }: DateTimePickerProps) {
-    const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(date);
+    const [selectedDate, setSelectedDate] = React.useState<Date | null>(date);
     const [timeValue, setTimeValue] = React.useState(
         date ? format(date, 'HH:mm') : ''
     );
 
     // Atualiza o estado quando a prop date muda
     React.useEffect(() => {
-        if (date) {
-            setSelectedDate(date);
-            setTimeValue(format(date, 'HH:mm'));
-        }
+        setSelectedDate(date);
+        setTimeValue(date ? format(date, 'HH:mm') : '');
     }, [date]);
 
-    const handleDateSelect = (date: Date | undefined) => {
-        setSelectedDate(date);
-        if (date && timeValue) {
+    const handleDateSelect: SelectSingleEventHandler = (newDate) => {
+        // Convertemos undefined para null para manter consistência
+        if (!newDate) {
+            setSelectedDate(null);
+            setTimeValue('');
+            onChange(null);
+            return;
+        }
+
+        // Se tiver data selecionada
+        const dateValue = newDate;
+        setSelectedDate(dateValue);
+
+        // Se já tiver horário, usa ele, senão usa meia-noite
+        if (timeValue) {
             const [hours, minutes] = timeValue.split(':');
-            const newDate = new Date(date.setHours(Number(hours), Number(minutes)));
-            onChange?.(newDate);
+            const dateWithTime = new Date(dateValue);
+            dateWithTime.setHours(Number(hours), Number(minutes));
+            onChange(dateWithTime);
+        } else {
+            // Define horário como meia-noite se não houver horário
+            const dateWithDefaultTime = new Date(dateValue);
+            dateWithDefaultTime.setHours(0, 0, 0, 0);
+            onChange(dateWithDefaultTime);
         }
     };
 
     const handleTimeChange = (time: string) => {
         setTimeValue(time);
-        if (selectedDate && time) {
+
+        if (!selectedDate) return;
+
+        if (time) {
             const [hours, minutes] = time.split(':');
             const newDate = new Date(selectedDate);
             newDate.setHours(Number(hours), Number(minutes));
-            onChange?.(newDate);
+            onChange(newDate);
+        } else {
+            // Se limpar o horário, mantém a data com horário meia-noite
+            const dateWithDefaultTime = new Date(selectedDate);
+            dateWithDefaultTime.setHours(0, 0, 0, 0);
+            onChange(dateWithDefaultTime);
         }
     };
 
@@ -74,7 +99,7 @@ export function DateTimePicker({ date, onChange }: DateTimePickerProps) {
                 <PopoverContent className="w-auto p-0">
                     <Calendar
                         mode="single"
-                        selected={selectedDate}
+                        selected={selectedDate || undefined}
                         onSelect={handleDateSelect}
                         locale={ptBR}
                         initialFocus
@@ -86,6 +111,7 @@ export function DateTimePicker({ date, onChange }: DateTimePickerProps) {
                 value={timeValue}
                 onChange={(e) => handleTimeChange(e.target.value)}
                 className="w-[140px]"
+                disabled={!selectedDate}
             />
         </div>
     );

@@ -1,8 +1,11 @@
 import type { DateRange } from 'react-day-picker';
 
-// Interface para o Lead vindo da API
-export interface APILead {
-    id: number;
+// Status e Prioridades
+export type LeadStatus = 'LEAD' | 'PROPOSTA_ENVIADA' | 'FECHADO' | 'NAO_FECHADO';
+export type LeadPriority = 'BAIXA' | 'MEDIA' | 'ALTA';
+
+// Campos base compartilhados
+interface BaseLeadFields {
     status: LeadStatus;
     priority: LeadPriority;
     contactName: string;
@@ -10,31 +13,30 @@ export interface APILead {
     value: number;
     email: string;
     phone: string;
-    lastContactDate: string;
-    nextContactDate: string;
     observations: string;
+}
+
+// Interface para o lead no formulário
+export interface LeadFormData extends BaseLeadFields {
+    lastContactDate: Date | null;
+    nextContactDate: Date | null;
+}
+
+// Interface para o lead na API
+export interface APILead extends BaseLeadFields {
+    id: number;
+    lastContactDate: string | null;
+    nextContactDate: string | null;
     createdAt: string;
     updatedAt?: string;
 }
 
-// Status possíveis para um Lead
-export type LeadStatus = 'LEAD' | 'PROPOSTA_ENVIADA' | 'FECHADO' | 'NAO_FECHADO';
-
-// Prioridades possíveis para um Lead
-export type LeadPriority = 'BAIXA' | 'MEDIA' | 'ALTA';
-
-// Interface para o Lead no formulário
-export type LeadFormData = Omit<APILead, 'id' | 'createdAt' | 'updatedAt'>;
-
-// Interface para update parcial do Lead
+// Tipo para update parcial
 export type LeadUpdate = Partial<LeadFormData>;
-
-// Tipo para campos de data
-export type DateField = 'lastContactDate' | 'nextContactDate' | 'createdAt';
 
 // Interface para o filtro de data
 export interface LeadsFilter {
-    dateField: DateField;
+    dateField: 'lastContactDate' | 'nextContactDate' | 'createdAt';
     range: DateRange | undefined;
 }
 
@@ -46,7 +48,7 @@ export interface KanbanResponse {
     NAO_FECHADO: APILead[];
 }
 
-// Type helper para garantir que todas as chaves do status estão presentes
+// Interface para os dados do Kanban após processamento
 export type KanbanData = {
     [K in LeadStatus]: APILead[];
 };

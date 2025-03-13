@@ -12,7 +12,7 @@ import type {
     APILead,
     LeadStatus,
     LeadsFilter,
-    KanbanData
+    KanbanResponse
 } from '@/lib/types/lead';
 
 const statusMapping: Record<LeadStatus, string> = {
@@ -23,7 +23,7 @@ const statusMapping: Record<LeadStatus, string> = {
 };
 
 export function LeadsKanban() {
-    const { kanban, isLoading, updateLead } = useLeads();
+    const { kanban, isLoading, updateLead, deleteLead } = useLeads();
     const [dateFilter, setDateFilter] = useState<LeadsFilter>({
         dateField: 'createdAt',
         range: undefined
@@ -48,16 +48,14 @@ export function LeadsKanban() {
     const handleDrop = (leadId: number, newStatus: LeadStatus) => {
         updateLead({
             id: leadId,
-            data: { status: newStatus },
-            showToast: false
+            data: { status: newStatus }
         });
     };
 
     const handleUpdate = (id: number, data: Partial<APILead>) => {
         updateLead({
             id,
-            data,
-            showToast: true
+            data
         });
     };
 
@@ -70,20 +68,23 @@ export function LeadsKanban() {
         const endDate = endOfDay(dateFilter.range.to);
 
         return leads.filter(lead => {
-            let dateToFilter: string;
-
-            // Determina qual data usar baseado no campo selecionado
+            // Para createdAt, que sempre existe
             if (dateFilter.dateField === 'createdAt') {
-                dateToFilter = lead.createdAt; // createdAt sempre existe
-            } else {
-                dateToFilter = lead[dateFilter.dateField];
-                if (!dateToFilter) return false;
+                const dateToCheck = parseISO(lead.createdAt);
+                return isWithinInterval(dateToCheck, {
+                    start: startDate,
+                    end: endDate
+                });
             }
 
-            const leadDate = parseISO(dateToFilter);
-            if (!isValid(leadDate)) return false;
+            // Para outros campos que podem ser null
+            const dateString = lead[dateFilter.dateField];
+            if (!dateString) return false;
 
-            return isWithinInterval(leadDate, {
+            const dateToCheck = parseISO(dateString);
+            if (!isValid(dateToCheck)) return false;
+
+            return isWithinInterval(dateToCheck, {
                 start: startDate,
                 end: endDate
             });
@@ -94,7 +95,7 @@ export function LeadsKanban() {
         setDateFilter(filter);
     };
 
-    const kanbanData = kanban || {} as KanbanData;
+    const kanbanData = kanban || {} as KanbanResponse;
 
     return (
         <div className="flex flex-col h-full">
@@ -111,6 +112,7 @@ export function LeadsKanban() {
                             leads={filterLeads(kanbanData[status] || [])}
                             onDrop={handleDrop}
                             onUpdate={handleUpdate}
+                            onDelete={deleteLead}
                         />
                     ))}
                 </div>

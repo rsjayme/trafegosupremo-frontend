@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 const leadSchema = z.object({
-    id: z.number().optional(), // Opcional para criação, obrigatório para edição
     status: z.enum(['LEAD', 'PROPOSTA_ENVIADA', 'FECHADO', 'NAO_FECHADO']).default('LEAD'),
     priority: z.enum(['BAIXA', 'MEDIA', 'ALTA']).default('MEDIA'),
     contactName: z.string({
@@ -13,14 +12,23 @@ const leadSchema = z.object({
     value: z.coerce.number().default(0),
     email: z.string().default(''),
     phone: z.string().default(''),
-    lastContactDate: z.string().default(''),
-    nextContactDate: z.string().default(''),
-    observations: z.string().default(''),
-    createdAt: z.string().optional(),
-    updatedAt: z.string().optional()
+    lastContactDate: z.date().nullable(),
+    nextContactDate: z.date().nullable(),
+    observations: z.string().default('')
 });
 
+// Interface para resposta da API
+export interface ApiLead extends z.infer<typeof leadSchema> {
+    id: number;
+    createdAt: string;
+    updatedAt?: string;
+}
+
+// Tipo para o formulário
 export type LeadFormData = z.infer<typeof leadSchema>;
+
+// Tipo para update parcial
+export type LeadUpdateData = Partial<LeadFormData>;
 
 export type LeadStatus = LeadFormData['status'];
 export type LeadPriority = LeadFormData['priority'];

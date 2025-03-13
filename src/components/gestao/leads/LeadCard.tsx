@@ -1,91 +1,122 @@
 'use client';
 
-import { forwardRef } from 'react';
 import { useDrag } from 'react-dnd';
-import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
-import { formatCurrency } from '@/lib/utils';
+import { useRef } from 'react';
+import { numberToCurrency, formatPhone } from '@/lib/utils';
 import { LeadFormDialog } from './LeadFormDialog';
-
-interface Lead {
-    id: number;
-    status: 'LEAD' | 'PROPOSTA_ENVIADA' | 'FECHADO' | 'NAO_FECHADO';
-    priority: 'BAIXA' | 'MEDIA' | 'ALTA';
-    contactName: string;
-    companyName: string;
-    value: number;
-    email: string;
-    phone: string;
-    lastContactDate: string;
-    nextContactDate: string;
-    observations?: string;
-}
+import { CalendarIcon, PhoneIcon, Trash2 } from 'lucide-react';
+import type { APILead, LeadFormData } from '@/lib/types/lead';
+import {
+    Card,
+    CardHeader,
+    CardTitle,
+    CardContent,
+} from '@/components/ui/card';
+import {
+    ContextMenu,
+    ContextMenuContent,
+    ContextMenuItem,
+    ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 
 interface LeadCardProps {
-    lead: Lead;
-    onUpdate: (id: number, data: Partial<Lead>) => void;
+    lead: APILead;
+    onUpdate: (id: number, data: Partial<LeadFormData>) => void;
+    onDelete?: (id: number) => void;
 }
 
-const priorityColors = {
-    BAIXA: 'bg-green-500/10 text-green-500 hover:bg-green-500/20',
-    MEDIA: 'bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20',
-    ALTA: 'bg-red-500/10 text-red-500 hover:bg-red-500/20'
-};
+// Converte o lead da API para o formato do formulário
+const convertToFormData = (lead: APILead): LeadFormData => ({
+    status: lead.status,
+    priority: lead.priority,
+    contactName: lead.contactName,
+    companyName: lead.companyName,
+    value: lead.value,
+    email: lead.email,
+    phone: lead.phone,
+    observations: lead.observations,
+    lastContactDate: lead.lastContactDate ? new Date(lead.lastContactDate) : null,
+    nextContactDate: lead.nextContactDate ? new Date(lead.nextContactDate) : null,
+});
 
-export const LeadCard = forwardRef<HTMLDivElement, LeadCardProps>(function LeadCard({ lead, onUpdate }, ref) {
-    const [{ isDragging }, drag] = useDrag(() => ({
+export function LeadCard({ lead, onUpdate, onDelete }: LeadCardProps) {
+    // Use useRef para a referência do drag
+    const dragRef = useRef<HTMLDivElement>(null);
+    const [{ isDragging }, dragConnect] = useDrag({
         type: 'LEAD',
-        item: { id: lead.id, status: lead.status },
+        item: { id: lead.id },
         collect: (monitor) => ({
-            isDragging: monitor.isDragging()
-        })
-    }));
+            isDragging: monitor.isDragging(),
+        }),
+    });
+
+    // Conecta a ref do drag
+    dragConnect(dragRef);
+
+    const handleDelete = () => {
+        if (onDelete) {
+            onDelete(lead.id);
+        }
+    };
 
     return (
-        <LeadFormDialog
-            trigger={
-                <div>
-                    <Card
-                        ref={(node) => {
-                            if (ref) {
-                                if (typeof ref === 'function') {
-                                    ref(node);
-                                } else {
-                                    ref.current = node;
-                                }
-                            }
-                            drag(node);
+        <ContextMenu>
+            <ContextMenuTrigger>
+                <div
+                    ref={dragRef}
+                    style={{ opacity: isDragging ? 0.5 : 1 }}
+                    className="cursor-grab active:cursor-grabbing mb-3"
+                >
+                    <LeadFormDialog
+                        trigger={
+                            <Card className="hover:bg-muted/50 transition-colors">
+                                <CardHeader className="p-4 pb-2">
+                                    <CardTitle className="text-base font-medium">
+                                        {lead.companyName}
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-4 pt-2 space-y-2">
+                                    <div className="text-sm text-muted-foreground">
+                                        {lead.contactName}
+                                    </div>
+                                    {lead.phone && (
+                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                            <PhoneIcon className="h-3 w-3" />
+                                            {formatPhone(lead.phone)}
+                                        </div>
+                                    )}
+                                    {lead.value > 0 && (
+                                        <div className="text-sm font-medium">
+                                            R$ {numberToCurrency(lead.value)}
+                                        </div>
+                                    )}
+                                    {lead.nextContactDate && (
+                                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                            <CalendarIcon className="h-3 w-3" />
+                                            <span>
+                                                {new Date(lead.nextContactDate).toLocaleDateString()}
+                                            </span>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        }
+                        defaultValues={convertToFormData(lead)}
+                        onSubmit={(data) => {
+                            onUpdate(lead.id, data);
                         }}
-                        className="p-4 cursor-pointer hover:shadow-md transition-shadow"
-                        style={{ opacity: isDragging ? 0.5 : 1 }}
-                    >
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <Badge className={priorityColors[lead.priority]}>
-                                    {lead.priority}
-                                </Badge>
-                                <span className="text-sm font-medium">
-                                    {formatCurrency(lead.value)}
-                                </span>
-                            </div>
-
-                            <div>
-                                <h4 className="font-medium truncate">{lead.contactName}</h4>
-                                <p className="text-sm text-muted-foreground truncate">
-                                    {lead.companyName}
-                                </p>
-                            </div>
-
-                            <div className="text-xs text-muted-foreground space-y-1">
-                                <p className="truncate">Email: {lead.email}</p>
-                                <p>Telefone: {lead.phone}</p>
-                            </div>
-                        </div>
-                    </Card>
+                    />
                 </div>
-            }
-            defaultValues={lead}
-            onSubmit={(data) => onUpdate(lead.id, data)}
-        />
+            </ContextMenuTrigger>
+            <ContextMenuContent>
+                <ContextMenuItem
+                    onClick={handleDelete}
+                    className="flex items-center gap-2"
+                >
+                    <Trash2 className="h-4 w-4" />
+                    <span>Deletar</span>
+                </ContextMenuItem>
+            </ContextMenuContent>
+        </ContextMenu>
     );
-});
+}
