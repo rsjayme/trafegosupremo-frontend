@@ -8,12 +8,6 @@ const convertToApiFormat = (data: Partial<LeadFormData>): Partial<APILead> => ({
     nextContactDate: data.nextContactDate?.toISOString() ?? null,
 });
 
-// Converte dados da API para o formato do form
-const convertToFormFormat = (data: APILead): LeadFormData => ({
-    ...data,
-    lastContactDate: data.lastContactDate ? new Date(data.lastContactDate) : null,
-    nextContactDate: data.nextContactDate ? new Date(data.nextContactDate) : null,
-});
 
 interface KanbanResponse {
     LEAD: APILead[];

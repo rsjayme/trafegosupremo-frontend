@@ -19,8 +19,10 @@ export function useLeads() {
     });
 
     const createMutation = useMutation({
-        mutationFn: (data: LeadFormData) =>
-            leadsService.create(data),
+        mutationFn: (data: LeadFormData) => {
+            const apiData = convertToApiFormat(data);
+            return leadsService.create(apiData as LeadFormData);
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['leads'] });
             toast.success('Lead criado com sucesso');
@@ -36,8 +38,9 @@ export function useLeads() {
     };
 
     const updateMutation = useMutation({
-        mutationFn: ({ id, data }: UpdateParams) =>
-            leadsService.update(id, data),
+        mutationFn: ({ id, data }: UpdateParams) => {
+            return leadsService.update(id, data);
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['leads'] });
             toast.success('Lead atualizado com sucesso');
