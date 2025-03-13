@@ -1,14 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { leadsService } from '@/services/leads';
-import type { LeadFormData, APILead } from '@/lib/types/lead';
-
-// Converte dados do form para o formato da API
-const convertToApiFormat = (data: Partial<LeadFormData>): Partial<APILead> => ({
-    ...data,
-    lastContactDate: data.lastContactDate?.toISOString() ?? null,
-    nextContactDate: data.nextContactDate?.toISOString() ?? null,
-});
+import type { LeadFormData } from '@/lib/types/lead';
 
 export function useLeads() {
     const queryClient = useQueryClient();
@@ -20,8 +13,7 @@ export function useLeads() {
 
     const createMutation = useMutation({
         mutationFn: (data: LeadFormData) => {
-            const apiData = convertToApiFormat(data);
-            return leadsService.create(apiData as LeadFormData);
+            return leadsService.create(data);
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['leads'] });
@@ -34,7 +26,7 @@ export function useLeads() {
 
     type UpdateParams = {
         id: number;
-        data: Partial<APILead>;
+        data: Partial<LeadFormData>;
     };
 
     const updateMutation = useMutation({

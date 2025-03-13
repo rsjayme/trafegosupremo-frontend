@@ -12,7 +12,8 @@ import type {
     APILead,
     LeadStatus,
     LeadsFilter,
-    KanbanResponse
+    KanbanResponse,
+    LeadFormData
 } from '@/lib/types/lead';
 
 const statusMapping: Record<LeadStatus, string> = {
@@ -21,6 +22,13 @@ const statusMapping: Record<LeadStatus, string> = {
     FECHADO: 'Fechados',
     NAO_FECHADO: 'Não Fechados'
 };
+
+// Converte dados da API para o formato do formulário
+const convertToFormData = (data: Partial<APILead>): Partial<LeadFormData> => ({
+    ...data,
+    lastContactDate: data.lastContactDate ? new Date(data.lastContactDate) : null,
+    nextContactDate: data.nextContactDate ? new Date(data.nextContactDate) : null
+});
 
 export function LeadsKanban() {
     const { kanban, isLoading, updateLead, deleteLead } = useLeads();
@@ -48,11 +56,11 @@ export function LeadsKanban() {
     const handleDrop = (leadId: number, newStatus: LeadStatus) => {
         updateLead({
             id: leadId,
-            data: { status: newStatus }
+            data: convertToFormData({ status: newStatus })
         });
     };
 
-    const handleUpdate = (id: number, data: Partial<APILead>) => {
+    const handleUpdate = (id: number, data: Partial<LeadFormData>) => {
         updateLead({
             id,
             data

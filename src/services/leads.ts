@@ -1,21 +1,6 @@
 import api from '@/lib/api';
 import type { LeadFormData, APILead } from '@/lib/types/lead';
 
-// Converte dados do form para o formato da API
-const convertToApiFormat = (data: Partial<LeadFormData>): Partial<APILead> => ({
-    ...data,
-    lastContactDate: data.lastContactDate?.toISOString() ?? null,
-    nextContactDate: data.nextContactDate?.toISOString() ?? null,
-});
-
-
-interface KanbanResponse {
-    LEAD: APILead[];
-    PROPOSTA_ENVIADA: APILead[];
-    FECHADO: APILead[];
-    NAO_FECHADO: APILead[];
-}
-
 interface ApiError {
     message: string;
     statusCode: number;
@@ -29,12 +14,25 @@ interface ApiErrorResponse {
     };
 }
 
+interface KanbanResponse {
+    LEAD: APILead[];
+    PROPOSTA_ENVIADA: APILead[];
+    FECHADO: APILead[];
+    NAO_FECHADO: APILead[];
+}
+
 const isApiError = (error: unknown): error is ApiErrorResponse => {
     return typeof error === 'object' &&
         error !== null &&
         'isAxiosError' in error &&
         Boolean(error.isAxiosError);
 };
+
+const convertFormDataToApi = (data: LeadFormData | Partial<LeadFormData>): Partial<APILead> => ({
+    ...data,
+    lastContactDate: data.lastContactDate?.toISOString() ?? null,
+    nextContactDate: data.nextContactDate?.toISOString() ?? null,
+});
 
 export const leadsService = {
     async getKanban(): Promise<KanbanResponse> {
@@ -51,7 +49,7 @@ export const leadsService = {
 
     async create(data: LeadFormData): Promise<APILead> {
         try {
-            const apiData = convertToApiFormat(data);
+            const apiData = convertFormDataToApi(data);
             const response = await api.post<APILead>('/leads', apiData);
             return response.data;
         } catch (error) {
@@ -64,7 +62,7 @@ export const leadsService = {
 
     async update(id: number, data: Partial<LeadFormData>): Promise<APILead> {
         try {
-            const apiData = convertToApiFormat(data);
+            const apiData = convertFormDataToApi(data);
             const response = await api.patch<APILead>(`/leads/${id}`, apiData);
             return response.data;
         } catch (error) {

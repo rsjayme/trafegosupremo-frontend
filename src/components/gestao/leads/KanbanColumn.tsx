@@ -9,16 +9,9 @@ interface KanbanColumnProps {
     status: APILead['status'];
     leads: APILead[];
     onDrop: (leadId: number, newStatus: APILead['status']) => void;
-    onUpdate: (id: number, data: Partial<APILead>) => void;
+    onUpdate: (id: number, data: Partial<LeadFormData>) => void;
     onDelete: (id: number) => void;
 }
-
-// Converte dados do form para o formato da API
-const convertToApiFormat = (data: Partial<LeadFormData>): Partial<APILead> => ({
-    ...data,
-    lastContactDate: data.lastContactDate?.toISOString() ?? null,
-    nextContactDate: data.nextContactDate?.toISOString() ?? null,
-});
 
 export function KanbanColumn({
     title,
@@ -41,8 +34,8 @@ export function KanbanColumn({
     dropConnect(dropRef);
 
     const handleUpdate = (id: number, data: Partial<LeadFormData>) => {
-        const apiData = convertToApiFormat(data);
-        onUpdate(id, apiData);
+        // Os dados já vêm no formato LeadFormData do LeadCard
+        onUpdate(id, data);
     };
 
     return (
