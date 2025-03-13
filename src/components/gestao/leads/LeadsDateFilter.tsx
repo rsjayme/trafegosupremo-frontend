@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import type { DateRange } from 'react-day-picker';
-import type { DateField, LeadsFilter } from '@/lib/types/lead';
+import type { LeadsFilter } from '@/lib/types/lead';
 import {
     Popover,
     PopoverContent,
@@ -22,6 +22,10 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 
+type DateField = 'createdAt' | 'lastContactDate' | 'nextContactDate';
+
+// Type 'DateField' is not assignable to type '"createdAt" | "lastContactDate" | "nextContactDate"'.ts(2322)
+// Como tipar corretamente? 
 const dateFieldLabels: Record<DateField, string> = {
     createdAt: 'Data de Criação',
     lastContactDate: 'Data do Último Contato',

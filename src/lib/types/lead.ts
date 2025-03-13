@@ -3,6 +3,11 @@ import type { DateRange } from 'react-day-picker';
 // Status e Prioridades
 export type LeadStatus = 'LEAD' | 'PROPOSTA_ENVIADA' | 'FECHADO' | 'NAO_FECHADO';
 export type LeadPriority = 'BAIXA' | 'MEDIA' | 'ALTA';
+export interface DateField {
+    createdAt: string;
+    lastContactDate: string;
+    nextContactDate: string;
+}
 
 // Campos base compartilhados
 interface BaseLeadFields {
