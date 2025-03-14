@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useMemo } from 'react';
+import { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -11,57 +11,54 @@ interface GestaoLayoutProps {
     children: ReactNode;
 }
 
+const navigation = [
+    {
+        name: "Leads",
+        href: "/nucleo-gestao/leads",
+        icon: Kanban,
+    },
+    {
+        name: "Clientes",
+        href: "/nucleo-gestao/clients",
+        icon: UserCircle,
+    },
+];
+
 export default function GestaoLayout({ children }: GestaoLayoutProps) {
     const pathname = usePathname();
 
-    const menuItems = useMemo(() => [
-        {
-            label: "Leads",
-            icon: Kanban,
-            href: "/nucleo-gestao/leads",
-        },
-        {
-            label: "Clientes", // Será implementado posteriormente
-            icon: UserCircle,
-            href: "/nucleo-gestao/clientes",
-            disabled: true
-        },
-    ], []);
-
     return (
-        <div className="flex w-full h-full">
-            <aside className="w-[240px] border-r bg-background">
+        <div className="flex h-screen w-full">
+            <aside className="w-60 border-r">
                 <div className="h-14 border-b flex items-center px-4">
                     <h2 className="font-medium">Núcleo de Gestão</h2>
                 </div>
                 <ScrollArea className="h-[calc(100vh-3.5rem)]">
-                    <nav className="space-y-2 p-4">
-                        {menuItems.map((item) => {
+                    <nav className="space-y-1 p-2">
+                        {navigation.map((item) => {
                             const isActive = pathname.startsWith(item.href);
+                            const Icon = item.icon;
 
                             return (
-                                <Link
+                                <Button
                                     key={item.href}
-                                    href={item.href}
-                                    className={item.disabled ? 'pointer-events-none' : ''}
+                                    variant={isActive ? "secondary" : "ghost"}
+                                    asChild
+                                    className="w-full justify-start"
                                 >
-                                    <Button
-                                        variant={isActive ? "secondary" : "ghost"}
-                                        className="w-full justify-start gap-3"
-                                        disabled={item.disabled}
-                                    >
-                                        <item.icon className="h-5 w-5" />
-                                        <span>{item.label}</span>
-                                    </Button>
-                                </Link>
+                                    <Link href={item.href}>
+                                        <Icon className="mr-2 h-5 w-5" />
+                                        {item.name}
+                                    </Link>
+                                </Button>
                             );
                         })}
                     </nav>
                 </ScrollArea>
             </aside>
-            <div className="flex-1 w-full overflow-hidden">
+            <main className="flex-1 w-full overflow-auto">
                 {children}
-            </div>
+            </main>
         </div>
     );
 }
