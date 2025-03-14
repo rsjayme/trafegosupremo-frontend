@@ -2,7 +2,7 @@
 
 import { useDrag } from 'react-dnd';
 import { useRef } from 'react';
-import { numberToCurrency, formatPhone } from '@/lib/utils';
+import { numberToCurrency, formatPhone } from '@/lib/format';
 import { LeadFormDialog } from './LeadFormDialog';
 import { CalendarIcon, PhoneIcon, Trash2 } from 'lucide-react';
 import type { APILead, LeadFormData } from '@/lib/types/lead';

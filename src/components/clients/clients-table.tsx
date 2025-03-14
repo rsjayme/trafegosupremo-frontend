@@ -16,7 +16,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DotsThreeVertical, Power } from "@phosphor-icons/react";
-import { formatCurrency } from "@/lib/utils";
+import { numberToCurrency, formatPhone } from "@/lib/format";
 import { type ClientData } from "@/lib/schemas/client";
 
 interface ClientsTableProps {
@@ -53,9 +53,9 @@ export function ClientsTable({ data, onUpdateStatus, onEdit }: ClientsTableProps
                             <TableCell>{client.responsibleName}</TableCell>
                             <TableCell>{client.companyName}</TableCell>
                             <TableCell>{client.email || '-'}</TableCell>
-                            <TableCell>{client.phone || '-'}</TableCell>
+                            <TableCell>{client.phone ? formatPhone(client.phone) : '-'}</TableCell>
                             <TableCell>
-                                {client.value ? formatCurrency(client.value) : '-'}
+                                {client.value ? numberToCurrency(client.value) : '-'}
                             </TableCell>
                             <TableCell>
                                 <DropdownMenu>
